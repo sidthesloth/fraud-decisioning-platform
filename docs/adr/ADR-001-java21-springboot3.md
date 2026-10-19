@@ -1,0 +1,13 @@
+# ADR-001: Java 21 + Spring Boot 3.x + Maven wrapper
+
+## Status
+Accepted
+
+## Decision
+Java 21 (`--release 21`, no preview/incubator features), Spring Boot 3.x, Maven with committed wrapper.
+
+## Context / Consequences
+Java 21 is LTS with the most mature toolchain, container-image, and security-scanning support.
+Gradle Kotlin DSL was rejected for this artifact: Maven constrains AI-generated build logic,
+maximizes reviewer familiarity, and the speed gap is irrelevant versus Testcontainers startup time.
+Upgrade to Java 25 only after a full dependency-matrix verification; never chase non-LTS.
