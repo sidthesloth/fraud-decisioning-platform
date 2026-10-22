@@ -7,3 +7,5 @@ spring:
     password: ${DB_PASSWORD:fraud}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed-dev
