@@ -9,6 +9,9 @@ RUN mvn -q -B clean package -DskipTests
 # ---------- Runtime stage ----------
 FROM eclipse-temurin:21-jre
 WORKDIR /app
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
 RUN groupadd -r app && useradd -r -g app app
 COPY --from=build /app/target/fraud-decisioning-platform-0.0.1-SNAPSHOT.jar app.jar
 USER app

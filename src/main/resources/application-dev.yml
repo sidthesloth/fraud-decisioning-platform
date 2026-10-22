@@ -1,0 +1,9 @@
+# Local development profile. Defaults below are for the docker-compose stack only
+# (host-side ports) and are NOT production credentials. Override any value via env vars.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/fraud}
+    username: ${DB_USERNAME:fraud}
+    password: ${DB_PASSWORD:fraud}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
