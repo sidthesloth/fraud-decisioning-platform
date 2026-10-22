@@ -49,6 +49,8 @@ public class SecurityConfiguration {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/**")
                     .hasAnyRole(ANALYST, ADMIN)
+                    .requestMatchers(HttpMethod.POST, "/api/v1/alerts/*/disposition")
+                    .hasAnyRole(ANALYST, ADMIN)
                     .requestMatchers("/api/**")
                     .hasRole(ADMIN)
                     .anyRequest()

@@ -33,6 +33,12 @@ public final class MeteredAlertStore implements AlertStore {
   }
 
   @Override
+  public AlertPage search(
+      AlertStatus status, com.acme.fraud.alert.Severity severity, int page, int size) {
+    return delegate.search(status, severity, page, size);
+  }
+
+  @Override
   public Alert transition(
       UUID alertId, AlertStatus to, String actor, String note, long expectedVersion) {
     return delegate.transition(alertId, to, actor, note, expectedVersion);

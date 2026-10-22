@@ -23,6 +23,11 @@ public interface AlertStore {
    */
   Alert transition(UUID alertId, AlertStatus to, String actor, String note, long expectedVersion);
 
+  /** Alert queue: optional filters, newest first; page is zero-based. */
+  AlertPage search(AlertStatus status, Severity severity, int page, int size);
+
+  record AlertPage(java.util.List<Alert> items, long total) {}
+
   record CreateResult(UUID alertId, boolean created) {}
 
   record Alert(

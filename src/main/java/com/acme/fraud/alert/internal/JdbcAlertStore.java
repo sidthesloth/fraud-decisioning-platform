@@ -113,6 +113,46 @@ public class JdbcAlertStore implements AlertStore {
   }
 
   @Override
+  public AlertPage search(AlertStatus status, Severity severity, int page, int size) {
+    if (page < 0 || size < 1 || size > 200) {
+      throw new IllegalArgumentException("page must be >= 0 and size within 1..200");
+    }
+    StringBuilder where = new StringBuilder(" WHERE 1=1");
+    java.util.Map<String, Object> params = new java.util.LinkedHashMap<>();
+    if (status != null) {
+      where.append(" AND status = :status");
+      params.put("status", status.name());
+    }
+    if (severity != null) {
+      where.append(" AND severity = :severity");
+      params.put("severity", severity.name());
+    }
+    long total =
+        jdbc.sql("SELECT count(*) FROM alerts" + where).params(params).query(Long.class).single();
+    java.util.List<Alert> items =
+        jdbc.sql(
+                "SELECT alert_id, decision_id, severity, status, created_at, updated_at,"
+                    + " row_version FROM alerts"
+                    + where
+                    + " ORDER BY created_at DESC, alert_id LIMIT :limit OFFSET :offset")
+            .params(params)
+            .param("limit", size)
+            .param("offset", (long) page * size)
+            .query(
+                (rs, n) ->
+                    new Alert(
+                        rs.getObject("alert_id", UUID.class),
+                        rs.getObject("decision_id", UUID.class),
+                        Severity.valueOf(rs.getString("severity")),
+                        AlertStatus.valueOf(rs.getString("status")),
+                        rs.getTimestamp("created_at").toInstant(),
+                        rs.getTimestamp("updated_at").toInstant(),
+                        rs.getLong("row_version")))
+            .list();
+    return new AlertPage(items, total);
+  }
+
+  @Override
   public Alert transition(
       UUID alertId, AlertStatus to, String actor, String note, long expectedVersion) {
     Alert result =
