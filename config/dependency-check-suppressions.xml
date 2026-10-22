@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+  <suppress until="2027-01-22Z">
+    <notes><![CDATA[
+      Added 2026-10-22, re-check by 2027-01-22.
+      CVE-2025-7962 is an SMTP injection in Jakarta Mail (angus-mail, fixed in 2.0.2).
+      It was matched to angus-activation 2.0.3 through a low-confidence CPE (eclipse:angus_mail).
+      angus-activation has no mail code and we send no email. No angus-activation release
+      carries a fix because the artifact is not affected.
+    ]]></notes>
+    <packageUrl regex="true">^pkg:maven/org\.eclipse\.angus/angus-activation@.*$</packageUrl>
+    <cve>CVE-2025-7962</cve>
+  </suppress>
+</suppressions>

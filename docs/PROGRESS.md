@@ -1,6 +1,6 @@
 # Progress
 
-- [ ] M0 Skeleton (build, CI, Docker, ADRs)
+- [X] M0 Skeleton (build, CI, Docker, ADRs)
 - [ ] M1 Ruledomain (aggregate, versioning, DSL + property tests)
 - [ ] M2 Evaluation (context enricher, scorer, decisions + snapshots)
 - [ ] M3 Ingestion (consumer, inbox, DLT, outbox, e2e tests)

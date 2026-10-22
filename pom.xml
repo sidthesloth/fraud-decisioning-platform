@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.3.5</version>
+    <version>4.1.1</version>
     <relativePath/>
   </parent>
 
@@ -17,15 +17,22 @@
 
   <properties>
     <java.version>21</java.version>
-    <spring-modulith.version>1.2.4</spring-modulith.version>
+    <spring-modulith.version>2.1.1</spring-modulith.version>
     <archunit.version>1.3.0</archunit.version>
-    <resilience4j.version>2.2.0</resilience4j.version>
+    <resilience4j.version>2.4.0</resilience4j.version>
+    <!-- CVE overrides, 2026-10-22: minimum patched versions -->
+    <!-- tomcat-embed 11.0.25 fixes CVE-2026-65637 and 10 related CVEs -->
+    <tomcat.version>11.0.25</tomcat.version>
+    <!-- CVE-2026-53914 fixed in Kotlin 2.4.20 -->
+    <kotlin.version>2.4.20</kotlin.version>
+    <!-- CVE-2026-39883 fixed in 1.43.0 -->
+    <opentelemetry-semconv.version>1.43.0</opentelemetry-semconv.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -33,7 +40,7 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+      <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -48,8 +55,8 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.springframework.kafka</groupId>
-      <artifactId>spring-kafka</artifactId>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-kafka</artifactId>
     </dependency>
     <dependency>
       <groupId>io.github.resilience4j</groupId>
@@ -59,6 +66,10 @@
     <dependency>
       <groupId>org.springframework.modulith</groupId>
       <artifactId>spring-modulith-starter-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>
@@ -76,12 +87,12 @@
     <dependency>
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-      <version>2.6.0</version>
+      <version>3.1.1</version>
     </dependency>
     <dependency>
       <groupId>net.logstash.logback</groupId>
       <artifactId>logstash-logback-encoder</artifactId>
-      <version>8.0</version>
+      <version>9.0</version>
     </dependency>
     <dependency>
       <groupId>io.micrometer</groupId>
@@ -95,7 +106,7 @@
     <!-- Test -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
+      <artifactId>spring-boot-starter-test-classic</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -104,10 +115,10 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.springframework.security</groupId>
-      <artifactId>spring-security-test</artifactId>
-      <scope>test</scope>
-    </dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security-test</artifactId>
+    <scope>test</scope>
+</dependency>
     <dependency>
       <groupId>org.springframework.modulith</groupId>
       <artifactId>spring-modulith-starter-test</artifactId>
@@ -115,12 +126,12 @@
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
+      <artifactId>testcontainers-postgresql</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>kafka</artifactId>
+      <artifactId>testcontainers-kafka</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -149,6 +160,18 @@
         <groupId>org.springframework.modulith</groupId>
         <artifactId>spring-modulith-bom</artifactId>
         <version>${spring-modulith.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.opentelemetry.semconv</groupId>
+        <artifactId>opentelemetry-semconv</artifactId>
+        <version>${opentelemetry-semconv.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>tools.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>3.2.3</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -189,6 +212,12 @@
         </executions>
         <configuration>
           <failBuildOnCVSS>7</failBuildOnCVSS>
+          <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
+          <!-- Sonatype OSS Index rejects anonymous requests (401); NVD analyzer stays active -->
+          <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
+          <suppressionFiles>
+            <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
+          </suppressionFiles>
         </configuration>
       </plugin>
       <plugin>
