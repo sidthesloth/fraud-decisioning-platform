@@ -44,7 +44,7 @@ One-sentence architecture thesis (use in ADRs and README):
 | Resilience | **Resilience4j** (circuit breaker, bulkhead, rate limiter, retry) | Explicitly named in the job spec. |
 | Observability | Micrometer + Prometheus + OpenTelemetry + structured JSON logs | `logback logstash encoder`, correlation IDs. |
 | Docs | OpenAPI/SpringDoc, README with diagrams, ADRs in `/docs/adr` | The README is part of the grade. |
-| Infra | Multi-stage `Dockerfile` + `docker-compose.yml` (app + postgres + redpanda) | Must run with `docker compose up --build`. |\
+| Infra | Multi-stage `Dockerfile` + `docker-compose.yml` (app + postgres + redpanda) | Must run with `docker compose up --build`. |
 | JSON library | **Jackson 3** (`tools.jackson.*` only — never mix with `com.fasterxml.jackson`) | See ADR-004; old packages can sneak in transitively and compile fine until they misbehave. |
 
 ---
@@ -144,7 +144,7 @@ Supported ops: `EQ, NEQ, GT, GTE, LT, LTE, IN, NOT_IN, EXISTS`. Add ops only wit
 
 ### EvaluationContext
 Enriched view of the transaction: raw event + derived aggregates (last-hour count,
-last-24h amount per account, new-device flag, cross-border flag). Aggregates come from a
+last-24h amount per account, new-device flag, cross-border flag, customer.riskTier, geo.velocity [TODO(ADAPTER): tier source and velocity definition unconfirmed]). Aggregates come from a
 `ContextEnricher` port with a PostgreSQL implementation behind Resilience4j bulkhead+circuit breaker.
 
 ### Decision
@@ -184,6 +184,7 @@ issues HS256 test JWTs so the reviewer can call the API without an IdP (document
 | `POST /rules` / `POST /rules/{ruleId}/versions` | ADMIN | create/new version (validates DSL) |
 | `POST /rules/{ruleId}/versions/{version}:activate|deactivate` | ADMIN | lifecycle |
 | `GET /metrics-summary` | ANALYST | small roll-up endpoint backed by materialized counts |
+| `GET /decisions/{id}/status` / `POST /dlq/replay` | ANALYST / ADMIN | processing status; replay of fraud.dlq.v1 messages (rate limited) |
 | `GET /actuator/health, /metrics, /prometheus` | infra | standard |
 
 Standards: problem-detail errors (RFC 9457), cursor-free offset pagination (fine here),
@@ -308,7 +309,7 @@ Docker requirements:
 ## 14. Milestone Map (Do not reorder without approval)
 
 - **M0 Skeleton:** Maven project, CI (GitHub Actions: verify + OWASP + spotless check), Dockerfile +
-  compose skeleton, README shell, `.gitignore`, ADR-000 (modular monolith), ADR-001 (Java 21/Spring Boot 3),
+  compose skeleton, README shell, `.gitignore`, ADR-000 (modular monolith), ADR-001 (Java 21/Maven; Boot version per ADR-004),
   ADR-002 (Redpanda local / Kafka prod), ADR-003 (deterministic rules, no ML v1).
 - **M1 Ruledomain:** FraudRule aggregate, version, condition DSL parser + property tests, ArchUnit baseline.
 - **M2 Evaluation:** EvaluationContext, ContextEnricher port + PG impl behind Resilience4j,
