@@ -62,5 +62,8 @@ curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/v1/decisions?s
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/actuator/prometheus
 ```
 
+## Operations
+Failure drills (broker down, duplicates, poison messages, slow DB, DLQ replay): `docs/RUNBOOK.md`.
+
 ## Status
 Work in progress — see `docs/PROGRESS.md`.
