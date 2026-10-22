@@ -76,7 +76,7 @@ public final class FraudRule {
   }
 
   public RuleVersion latest() {
-    return versions.get(versions.size() - 1);
+    return versions.getLast();
   }
 
   public String ruleId() {
