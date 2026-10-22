@@ -3,6 +3,9 @@ package com.acme.fraud.api;
 import com.acme.fraud.alert.AlertStore.AlertNotFoundException;
 import com.acme.fraud.alert.AlertStore.IllegalTransitionException;
 import com.acme.fraud.alert.AlertStore.StaleAlertException;
+import com.acme.fraud.ruledomain.RuleCatalog.RuleAlreadyExistsException;
+import com.acme.fraud.ruledomain.RuleCatalog.RuleNotFoundException;
+import com.acme.fraud.ruledomain.RuleDslException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -32,5 +35,22 @@ class ApiExceptionHandler {
   @ExceptionHandler(StaleAlertException.class)
   ProblemDetail stale(StaleAlertException e) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.PRECONDITION_FAILED, e.getMessage());
+  }
+
+  @ExceptionHandler(RuleDslException.class)
+  ProblemDetail invalidRule(RuleDslException e) {
+    ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+    p.setTitle("Invalid rule");
+    return p;
+  }
+
+  @ExceptionHandler(RuleNotFoundException.class)
+  ProblemDetail ruleNotFound(RuleNotFoundException e) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+  }
+
+  @ExceptionHandler(RuleAlreadyExistsException.class)
+  ProblemDetail ruleExists(RuleAlreadyExistsException e) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
   }
 }
