@@ -4,5 +4,5 @@
 - [X] M1 Ruledomain (aggregate, versioning, DSL + property tests)
 - [ ] M2 Evaluation (context enricher, scorer, decisions + snapshots)
 - [ ] M3 Ingestion (consumer, inbox, DLT, outbox, e2e tests)
-- [ ] M4 API + Security (REST, OpenAPI, OAuth2/RBAC)
+- [X] M4 API + Security (REST, OpenAPI, OAuth2/RBAC)
 - [ ] M5 Ops (metrics/traces/logs, mock producer, load smoke, README, runbook)
