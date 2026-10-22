@@ -48,6 +48,11 @@ public final class MeteredDecisionStore implements DecisionStore {
   }
 
   @Override
+  public DecisionPage search(DecisionQuery query) {
+    return delegate.search(query);
+  }
+
+  @Override
   public Optional<StoredDecision> findByTransactionId(String transactionId) {
     return delegate.findByTransactionId(transactionId);
   }

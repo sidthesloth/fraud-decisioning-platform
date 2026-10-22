@@ -1,6 +1,9 @@
 package com.acme.fraud.decisions;
 
 import com.acme.fraud.evaluation.Decision;
+import com.acme.fraud.evaluation.Outcome;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +20,30 @@ public interface DecisionStore {
   Optional<StoredDecision> findById(UUID decisionId);
 
   Optional<StoredDecision> findByTransactionId(String transactionId);
+
+  /** Paginated, indexed search (customer/outcome/time range); newest first. */
+  DecisionPage search(DecisionQuery query);
+
+  /** Filters are optional; {@code from} inclusive, {@code to} exclusive; page is zero-based. */
+  record DecisionQuery(
+      String customerId, Outcome outcome, Instant from, Instant to, int page, int size) {
+    public DecisionQuery {
+      if (page < 0 || size < 1 || size > 200) {
+        throw new IllegalArgumentException("page must be >= 0 and size within 1..200");
+      }
+    }
+  }
+
+  record DecisionSummary(
+      UUID decisionId,
+      String transactionId,
+      String customerId,
+      Outcome outcome,
+      int score,
+      boolean enrichmentDegraded,
+      Instant evaluatedAt) {}
+
+  record DecisionPage(List<DecisionSummary> items, long total) {}
 
   record SaveResult(UUID decisionId, boolean created) {}
 

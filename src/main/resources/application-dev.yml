@@ -9,3 +9,8 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
   flyway:
     locations: classpath:db/migration,classpath:db/seed-dev
+
+fraud:
+  security:
+    # Local-only default so the API can be exercised without an IdP. Never use outside dev.
+    jwt-secret: ${FRAUD_JWT_SECRET:dev-only-secret-dev-only-secret-0123456789}

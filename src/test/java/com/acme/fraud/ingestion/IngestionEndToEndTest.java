@@ -42,6 +42,7 @@ class IngestionEndToEndTest {
     r.add("spring.datasource.username", POSTGRES::getUsername);
     r.add("spring.datasource.password", POSTGRES::getPassword);
     r.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
+    r.add("fraud.security.jwt-secret", () -> "test-secret-test-secret-test-secret-123");
     r.add("fraud.outbox.poll-interval-ms", () -> "100");
     r.add("fraud.ingestion.initial-backoff", () -> "10ms");
   }

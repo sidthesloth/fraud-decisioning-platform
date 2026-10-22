@@ -21,5 +21,14 @@ spring:
       properties:
         enable.idempotence: true
 
+  mvc:
+    problemdetails:
+      enabled: true
+
   modulith:
     detection-strategy: explicitly-annotated
+
+fraud:
+  security:
+    # HS256 shared secret (>= 32 bytes). No default: the app refuses to start without it.
+    jwt-secret: ${FRAUD_JWT_SECRET}

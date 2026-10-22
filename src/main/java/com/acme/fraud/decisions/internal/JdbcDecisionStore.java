@@ -126,6 +126,54 @@ public class JdbcDecisionStore implements DecisionStore {
     return load("transaction_id = :v", transactionId);
   }
 
+  @Override
+  public DecisionPage search(DecisionQuery q) {
+    StringBuilder where = new StringBuilder(" WHERE 1=1");
+    Map<String, Object> params = new LinkedHashMap<>();
+    if (q.customerId() != null) {
+      where.append(" AND customer_id = :cust");
+      params.put("cust", q.customerId());
+    }
+    if (q.outcome() != null) {
+      where.append(" AND outcome = :outcome");
+      params.put("outcome", q.outcome().name());
+    }
+    if (q.from() != null) {
+      where.append(" AND evaluated_at >= :from");
+      params.put("from", Timestamp.from(q.from()));
+    }
+    if (q.to() != null) {
+      where.append(" AND evaluated_at < :to");
+      params.put("to", Timestamp.from(q.to()));
+    }
+    long total =
+        jdbc.sql("SELECT count(*) FROM decisions" + where)
+            .params(params)
+            .query(Long.class)
+            .single();
+    List<DecisionSummary> items =
+        jdbc.sql(
+                "SELECT decision_id, transaction_id, customer_id, outcome, score,"
+                    + " enrichment_degraded, evaluated_at FROM decisions"
+                    + where
+                    + " ORDER BY evaluated_at DESC, decision_id LIMIT :limit OFFSET :offset")
+            .params(params)
+            .param("limit", q.size())
+            .param("offset", (long) q.page() * q.size())
+            .query(
+                (rs, n) ->
+                    new DecisionSummary(
+                        rs.getObject("decision_id", UUID.class),
+                        rs.getString("transaction_id"),
+                        rs.getString("customer_id"),
+                        Outcome.valueOf(rs.getString("outcome")),
+                        rs.getInt("score"),
+                        rs.getBoolean("enrichment_degraded"),
+                        rs.getTimestamp("evaluated_at").toInstant()))
+            .list();
+    return new DecisionPage(items, total);
+  }
+
   private Optional<StoredDecision> load(String where, Object value) {
     List<Row> rows =
         jdbc.sql(
