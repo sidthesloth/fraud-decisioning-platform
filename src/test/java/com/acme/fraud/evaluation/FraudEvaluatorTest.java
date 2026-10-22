@@ -71,6 +71,17 @@ class FraudEvaluatorTest {
       };
 
   @Test
+  void recordsEvaluationDuration() {
+    io.micrometer.core.instrument.simple.SimpleMeterRegistry registry =
+        new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+    io.micrometer.core.instrument.Timer timer = registry.timer("fraud.evaluation.duration");
+    new FraudEvaluator(
+            OK, new RuleEngine(), new DeterministicRiskScorer(), Thresholds.DEFAULT, CLOCK, timer)
+        .evaluate(facts("10.00", "ZA"), List.of(), "h");
+    assertThat(timer.count()).isEqualTo(1);
+  }
+
+  @Test
   void approvesWhenNothingMatches() {
     Decision d =
         evaluator(OK)

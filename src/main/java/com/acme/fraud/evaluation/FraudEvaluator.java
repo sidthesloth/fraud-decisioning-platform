@@ -1,6 +1,7 @@
 package com.acme.fraud.evaluation;
 
 import com.acme.fraud.ruledomain.RuleVersion;
+import io.micrometer.core.instrument.Timer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -22,6 +23,7 @@ public final class FraudEvaluator {
   private final RiskScorer scorer;
   private final Thresholds thresholds;
   private final Clock clock;
+  private final Timer durationTimer;
 
   public FraudEvaluator(
       ContextEnricher enricher,
@@ -29,6 +31,17 @@ public final class FraudEvaluator {
       RiskScorer scorer,
       Thresholds thresholds,
       Clock clock) {
+    this(enricher, engine, scorer, thresholds, clock, null);
+  }
+
+  public FraudEvaluator(
+      ContextEnricher enricher,
+      RuleEngine engine,
+      RiskScorer scorer,
+      Thresholds thresholds,
+      Clock clock,
+      Timer durationTimer) {
+    this.durationTimer = durationTimer;
     this.enricher = enricher;
     this.engine = engine;
     this.scorer = scorer;
@@ -37,6 +50,18 @@ public final class FraudEvaluator {
   }
 
   public Decision evaluate(TransactionFacts facts, List<RuleVersion> rules, String inputHash) {
+    if (durationTimer == null) {
+      return doEvaluate(facts, rules, inputHash);
+    }
+    long start = System.nanoTime();
+    try {
+      return doEvaluate(facts, rules, inputHash);
+    } finally {
+      durationTimer.record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS);
+    }
+  }
+
+  private Decision doEvaluate(TransactionFacts facts, List<RuleVersion> rules, String inputHash) {
     EvaluationContext context = buildContext(facts);
     Instant now = clock.instant();
     RuleEngineResult result = engine.evaluate(context, rules, facts.occurredAt());

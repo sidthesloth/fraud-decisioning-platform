@@ -5,6 +5,8 @@ import com.acme.fraud.evaluation.internal.ResilientContextEnricher;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.time.Clock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -30,6 +32,7 @@ public class EvaluationConfiguration {
   FraudEvaluator fraudEvaluator(
       ContextEnricher enricher,
       Clock clock,
+      MeterRegistry registry,
       @Value("${fraud.evaluation.threshold.review:40}") int review,
       @Value("${fraud.evaluation.threshold.decline:80}") int decline) {
     return new FraudEvaluator(
@@ -37,6 +40,7 @@ public class EvaluationConfiguration {
         new RuleEngine(),
         new DeterministicRiskScorer(),
         new Thresholds(review, decline),
-        clock);
+        clock,
+        Timer.builder("fraud.evaluation.duration").publishPercentileHistogram().register(registry));
   }
 }
