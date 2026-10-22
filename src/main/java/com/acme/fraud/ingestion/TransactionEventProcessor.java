@@ -16,7 +16,8 @@ public class TransactionEventProcessor {
 
   public enum Result {
     PROCESSED,
-    DUPLICATE
+    DUPLICATE,
+    DEAD_LETTERED
   }
 
   private final CloudEventParser parser;
