@@ -21,4 +21,16 @@ class ApiConfiguration {
             .timeoutDuration(Duration.ZERO)
             .build());
   }
+
+  @Bean
+  RateLimiter dlqReplayRateLimiter(
+      @Value("${fraud.api.dlq-replay-limit-per-second:1}") int perSecond) {
+    return RateLimiter.of(
+        "dlq-replay",
+        RateLimiterConfig.custom()
+            .limitForPeriod(perSecond)
+            .limitRefreshPeriod(Duration.ofSeconds(1))
+            .timeoutDuration(Duration.ZERO)
+            .build());
+  }
 }

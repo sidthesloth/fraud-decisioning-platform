@@ -3,6 +3,7 @@ package com.acme.fraud.ingestion;
 import com.acme.fraud.alert.AlertStore;
 import com.acme.fraud.decisions.DecisionStore;
 import com.acme.fraud.evaluation.FraudEvaluator;
+import com.acme.fraud.ingestion.internal.JdbcDeadLetterReplayer;
 import com.acme.fraud.ingestion.internal.JdbcDeadLetterSink;
 import com.acme.fraud.ingestion.internal.JdbcIngestionLog;
 import com.acme.fraud.ingestion.internal.JdbcRuleSource;
@@ -34,6 +35,11 @@ public class IngestionConfiguration {
   @Bean
   DeadLetterSink deadLetterSink(JdbcClient jdbc, JsonMapper json, MeterRegistry registry) {
     return new MeteredDeadLetterSink(new JdbcDeadLetterSink(jdbc, json), registry);
+  }
+
+  @Bean
+  DeadLetterReplayer deadLetterReplayer(JdbcClient jdbc, TransactionTemplate tx, JsonMapper json) {
+    return new JdbcDeadLetterReplayer(jdbc, tx, json);
   }
 
   @Bean
