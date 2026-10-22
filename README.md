@@ -44,5 +44,23 @@ APP_PROFILES=dev,mock-producer docker compose up --build
 
 Seeded demo rules load with the `dev` profile. Scores and thresholds are demo values.
 
+### Calling the API (dev JWT)
+
+The `dev` profile verifies HS256 tokens signed with `dev-only-secret-dev-only-secret-0123456789`
+(override with `FRAUD_JWT_SECRET`). Mint a token with the `roles` claim
+(`FRAUD_ANALYST` = read, `FRAUD_ADMIN` = rule management, DLQ replay, metrics):
+
+```bash
+b64() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+SECRET=dev-only-secret-dev-only-secret-0123456789
+H=$(printf '{"alg":"HS256","typ":"JWT"}' | b64)
+P=$(printf '{"sub":"dev-admin","roles":["FRAUD_ADMIN"],"exp":%s}' $(( $(date +%s) + 3600 )) | b64)
+S=$(printf '%s.%s' "$H" "$P" | openssl dgst -sha256 -hmac "$SECRET" -binary | b64)
+TOKEN="$H.$P.$S"
+
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/v1/decisions?size=5"
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/actuator/prometheus
+```
+
 ## Status
 Work in progress — see `docs/PROGRESS.md`.
