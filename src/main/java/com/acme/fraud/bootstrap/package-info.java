@@ -1,4 +1,2 @@
-@ApplicationModule(displayName = "Decisions")
-package com.acme.fraud.decisions;
-
-import org.springframework.modulith.ApplicationModule;
+@org.springframework.modulith.ApplicationModule(displayName = "Bootstrap")
+package com.acme.fraud.bootstrap;
