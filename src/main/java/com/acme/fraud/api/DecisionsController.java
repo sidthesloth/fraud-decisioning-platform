@@ -37,6 +37,18 @@ class DecisionsController {
     return DecisionResponse.from(stored);
   }
 
+  record StatusResponse(UUID decisionId, String status, boolean evaluationPublished) {}
+
+  @GetMapping("/{id}/status")
+  StatusResponse status(@PathVariable UUID id) {
+    boolean published =
+        decisions
+            .evaluationPublished(id)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Decision not found"));
+    return new StatusResponse(id, published ? "PUBLISHED" : "PERSISTED", published);
+  }
+
   @GetMapping
   PageResponse<DecisionSummaryResponse> search(
       @RequestParam(required = false) String customerId,

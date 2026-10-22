@@ -6,6 +6,7 @@ import com.acme.fraud.evaluation.MatchedRule;
 import com.acme.fraud.evaluation.Outcome;
 import com.acme.fraud.evaluation.SkippedRule;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,6 +125,37 @@ public class JdbcDecisionStore implements DecisionStore {
   @Override
   public Optional<StoredDecision> findByTransactionId(String transactionId) {
     return load("transaction_id = :v", transactionId);
+  }
+
+  @Override
+  public Optional<Boolean> evaluationPublished(UUID decisionId) {
+    return jdbc.sql(
+            "SELECT EXISTS (SELECT 1 FROM outbox o WHERE o.topic = :topic AND o.message_key ="
+                + " d.transaction_id AND o.published_at IS NOT NULL) FROM decisions d"
+                + " WHERE d.decision_id = :id")
+        .param("topic", EVALUATIONS_TOPIC)
+        .param("id", decisionId)
+        .query(Boolean.class)
+        .optional();
+  }
+
+  @Override
+  public Map<Outcome, Long> countByOutcome(Instant since) {
+    Map<Outcome, Long> counts = new java.util.EnumMap<>(Outcome.class);
+    for (Outcome o : Outcome.values()) {
+      counts.put(o, 0L);
+    }
+    jdbc.sql(
+            "SELECT outcome, count(*) AS c FROM decisions WHERE evaluated_at >= :since"
+                + " GROUP BY outcome")
+        .param("since", Timestamp.from(since))
+        .query(
+            (rs, n) -> {
+              counts.put(Outcome.valueOf(rs.getString("outcome")), rs.getLong("c"));
+              return null;
+            })
+        .list();
+    return counts;
   }
 
   @Override

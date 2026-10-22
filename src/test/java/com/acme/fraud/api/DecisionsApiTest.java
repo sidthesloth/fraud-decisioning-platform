@@ -147,4 +147,35 @@ class DecisionsApiTest {
                 .header("Authorization", token("a", "FRAUD_ANALYST")))
         .andExpect(status().isBadRequest());
   }
+
+  @Test
+  void statusReportsPersistedUntilPublished() throws Exception {
+    UUID id = save("txn_api_st", "cust_api_st", Outcome.REVIEW);
+    mvc.perform(
+            get("/api/v1/decisions/" + id + "/status")
+                .header("Authorization", token("a", "FRAUD_ANALYST")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("PERSISTED"))
+        .andExpect(jsonPath("$.evaluationPublished").value(false));
+    mvc.perform(
+            get("/api/v1/decisions/" + UUID.randomUUID() + "/status")
+                .header("Authorization", token("a", "FRAUD_ANALYST")))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void metricsSummaryCountsOutcomes() throws Exception {
+    mvc.perform(
+            get("/api/v1/metrics-summary")
+                .param("hours", "744")
+                .header("Authorization", token("a", "FRAUD_ANALYST")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.byOutcome.APPROVE").exists())
+        .andExpect(jsonPath("$.windowHours").value(744));
+    mvc.perform(
+            get("/api/v1/metrics-summary")
+                .param("hours", "0")
+                .header("Authorization", token("a", "FRAUD_ANALYST")))
+        .andExpect(status().isBadRequest());
+  }
 }

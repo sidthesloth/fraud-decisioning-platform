@@ -3,6 +3,7 @@ package com.acme.fraud.decisions.internal;
 import com.acme.fraud.decisions.DecisionStore;
 import com.acme.fraud.evaluation.Decision;
 import com.acme.fraud.evaluation.MatchedRule;
+import com.acme.fraud.evaluation.Outcome;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,6 +46,16 @@ public final class MeteredDecisionStore implements DecisionStore {
   @Override
   public Optional<StoredDecision> findById(UUID decisionId) {
     return delegate.findById(decisionId);
+  }
+
+  @Override
+  public Optional<Boolean> evaluationPublished(UUID decisionId) {
+    return delegate.evaluationPublished(decisionId);
+  }
+
+  @Override
+  public java.util.Map<Outcome, Long> countByOutcome(java.time.Instant since) {
+    return delegate.countByOutcome(since);
   }
 
   @Override

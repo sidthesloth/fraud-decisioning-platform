@@ -4,6 +4,7 @@ import com.acme.fraud.evaluation.Decision;
 import com.acme.fraud.evaluation.Outcome;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,6 +24,12 @@ public interface DecisionStore {
 
   /** Paginated, indexed search (customer/outcome/time range); newest first. */
   DecisionPage search(DecisionQuery query);
+
+  /** Whether the evaluation event of the decision has been published; empty if unknown id. */
+  Optional<Boolean> evaluationPublished(UUID decisionId);
+
+  /** Decision counts per outcome for decisions evaluated at or after {@code since}. */
+  Map<Outcome, Long> countByOutcome(Instant since);
 
   /** Filters are optional; {@code from} inclusive, {@code to} exclusive; page is zero-based. */
   record DecisionQuery(
