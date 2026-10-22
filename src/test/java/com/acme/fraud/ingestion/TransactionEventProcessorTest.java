@@ -37,6 +37,22 @@ class TransactionEventProcessorTest {
 
   private static JdbcClient jdbc;
   private static TransactionEventProcessor processor;
+  private static volatile List<RuleVersion> rules;
+  private static volatile boolean enrichmentDown;
+
+  private static RuleVersion amountRule(int version, int score) {
+    return new RuleVersion(
+        "HIGH_VALUE",
+        version,
+        "High value",
+        null,
+        1,
+        new Condition.Leaf("amount", Operator.GT, "5000"),
+        new RuleAction(score, "HV"),
+        true,
+        null,
+        null);
+  }
 
   private static String event(String eventId, String txn, String amount) {
     return """
@@ -61,21 +77,15 @@ class TransactionEventProcessorTest {
     jdbc = JdbcClient.create(ds);
     TransactionTemplate tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
     JsonMapper json = JsonMapper.builder().build();
-    RuleVersion highValue =
-        new RuleVersion(
-            "HIGH_VALUE",
-            1,
-            "High value",
-            null,
-            1,
-            new Condition.Leaf("amount", Operator.GT, "5000"),
-            new RuleAction(50, "HV"),
-            true,
-            null,
-            null);
+    JdbcContextEnricher realEnricher = new JdbcContextEnricher(jdbc, "ZA");
     FraudEvaluator evaluator =
         new FraudEvaluator(
-            new JdbcContextEnricher(jdbc, "ZA"),
+            f -> {
+              if (enrichmentDown) {
+                throw new com.acme.fraud.evaluation.EnrichmentUnavailableException("down", null);
+              }
+              return realEnricher.enrich(f);
+            },
             new RuleEngine(),
             new DeterministicRiskScorer(),
             Thresholds.DEFAULT,
@@ -84,7 +94,7 @@ class TransactionEventProcessorTest {
         new TransactionEventProcessor(
             new CloudEventParser(json),
             new JdbcIngestionLog(jdbc),
-            () -> List.of(highValue),
+            () -> rules,
             evaluator,
             new JdbcDecisionStore(jdbc, tx, json),
             new JdbcAlertStore(jdbc, tx, json, Clock.systemUTC()),
@@ -98,6 +108,8 @@ class TransactionEventProcessorTest {
 
   @BeforeEach
   void clean() {
+    rules = List.of(amountRule(1, 50));
+    enrichmentDown = false;
     for (String t :
         List.of(
             "alert_transitions",
@@ -144,6 +156,38 @@ class TransactionEventProcessorTest {
     assertThat(processor.process(e)).isEqualTo(Result.DUPLICATE);
     assertThat(count("decisions")).isOne();
     assertThat(count("outbox")).isEqualTo(2);
+  }
+
+  @Test
+  void oldDecisionKeepsOldRuleSnapshotAfterNewRuleVersion() {
+    processor.process(event("evt_1", "txn_1", "6000.00"));
+    rules = List.of(amountRule(2, 90));
+    processor.process(event("evt_2", "txn_2", "6000.00"));
+
+    assertThat(matchedVersion("txn_1")).isEqualTo("1:50");
+    assertThat(matchedVersion("txn_2")).isEqualTo("2:90");
+  }
+
+  private static String matchedVersion(String txn) {
+    return jdbc.sql(
+            "SELECT m.rule_version || ':' || m.contribution FROM decision_matched_rules m"
+                + " JOIN decisions d USING (decision_id) WHERE d.transaction_id = :t")
+        .param("t", txn)
+        .query(String.class)
+        .single();
+  }
+
+  @Test
+  void enrichmentOutageStillProducesDegradedDecision() {
+    enrichmentDown = true;
+    assertThat(processor.process(event("evt_1", "txn_1", "6000.00"))).isEqualTo(Result.PROCESSED);
+
+    assertThat(
+            jdbc.sql("SELECT enrichment_degraded FROM decisions WHERE transaction_id = 'txn_1'")
+                .query(Boolean.class)
+                .single())
+        .isTrue();
+    assertThat(count("decisions")).isOne();
   }
 
   @Test
