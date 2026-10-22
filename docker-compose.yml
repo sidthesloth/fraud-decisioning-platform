@@ -41,7 +41,7 @@ services:
       SPRING_DATASOURCE_USERNAME: fraud
       SPRING_DATASOURCE_PASSWORD: fraud
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: ${APP_PROFILES:-dev}
     ports: ["8080:8080"]
 
 volumes:

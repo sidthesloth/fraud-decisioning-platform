@@ -33,5 +33,16 @@ docker compose up --build    # app + postgres + redpanda
 ```
 API docs (Swagger UI): planned — M4  |  Metrics (Prometheus): planned — M5
 
+### Mock producer
+
+Publishes a fixed catalog (normal, high-value cross-border, 6-event velocity burst, one malformed
+message that lands on `fraud.dlq.v1`):
+
+```bash
+APP_PROFILES=dev,mock-producer docker compose up --build
+```
+
+Seeded demo rules load with the `dev` profile. Scores and thresholds are demo values.
+
 ## Status
 Work in progress — see `docs/PROGRESS.md`.
