@@ -31,7 +31,7 @@ Module mapping to the brief: ingestion-adapter=`ingestion`, rule-domain=`ruledom
 ./mvnw clean verify          # full gate: unit + archunit + testcontainers + integration
 docker compose up --build    # app + postgres + redpanda
 ```
-API docs (Swagger UI): planned — M4  |  Metrics (Prometheus): planned — M5
+API docs: `/swagger-ui.html` and `/v3/api-docs` (public)  |  Metrics: `/actuator/prometheus` (admin JWT). Logs are structured JSON outside the `dev` profile.
 
 ### Mock producer
 
