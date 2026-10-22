@@ -14,6 +14,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 public class PlatformConfiguration {
 
   @Bean
+  public CorrelationIdFilter correlationIdFilter() {
+    return new CorrelationIdFilter();
+  }
+
+  @Bean
   Clock clock() {
     return Clock.systemUTC();
   }
