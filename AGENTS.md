@@ -33,7 +33,7 @@ One-sentence architecture thesis (use in ADRs and README):
 | Concern | Decision | Rationale |
 |---|---|---|
 | Language | **Java 21** (`--release 21`, no preview/incubator features) | LTS, mature toolchain/container/security-scanning support; virtual threads available. Do NOT use Java 25/27 for this submission. |
-| Framework | **Spring Boot 3.x** (latest stable your BOM resolves) | Matches job spec; production standard. |
+| Framework | **Spring Boot 4.1.x** (see ADR-004; supersedes ADR-001 version clause) | Matches job spec; version pinned in pom, never floating. |
 | Build | **Maven + wrapper** (`./mvnw`) | Lowest-friction for reviewers. |
 | Messaging | **Spring Kafka**, local broker = **Redpanda** (Kafka-compatible) | Role requires Kafka; Redpanda keeps docker-compose light. Production note: MSK/Confluent. |
 | Database | **PostgreSQL 16**, **Flyway** migrations | Job spec primary store. |
@@ -44,16 +44,17 @@ One-sentence architecture thesis (use in ADRs and README):
 | Resilience | **Resilience4j** (circuit breaker, bulkhead, rate limiter, retry) | Explicitly named in the job spec. |
 | Observability | Micrometer + Prometheus + OpenTelemetry + structured JSON logs | `logback logstash encoder`, correlation IDs. |
 | Docs | OpenAPI/SpringDoc, README with diagrams, ADRs in `/docs/adr` | The README is part of the grade. |
-| Infra | Multi-stage `Dockerfile` + `docker-compose.yml` (app + postgres + redpanda) | Must run with `docker compose up --build`. |
+| Infra | Multi-stage `Dockerfile` + `docker-compose.yml` (app + postgres + redpanda) | Must run with `docker compose up --build`. |\
+| JSON library | **Jackson 3** (`tools.jackson.*` only — never mix with `com.fasterxml.jackson`) | See ADR-004; old packages can sneak in transitively and compile fine until they misbehave. |
 
 ---
 
 ## 3. Bounded Contexts (Package Structure)
 
-Top-level package: `com.example.fraud`
+Top-level package: `com.acme.fraud`
 
 ```
-com.example.fraud
+com.acme.fraud
 ├── ingestion          // Kafka consumer adapters, inbox, schema validation, DLT handling
 │   └── internal       // implementation details — never import from other contexts
 ├── ruledomain         // FraudRule aggregate, rule versions, condition DSL, priority

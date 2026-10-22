@@ -1,7 +1,8 @@
 # ADR-001: Java 21 + Spring Boot 3.x + Maven wrapper
 
 ## Status
-Accepted
+Accepted — Spring Boot version clause superseded by ADR-004 (Boot 4.1.x).
+Java 21 and Maven-wrapper decisions remain in force.
 
 ## Decision
 Java 21 (`--release 21`, no preview/incubator features), Spring Boot 3.x, Maven with committed wrapper.
