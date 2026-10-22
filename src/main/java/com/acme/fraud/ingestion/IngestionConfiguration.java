@@ -6,8 +6,10 @@ import com.acme.fraud.evaluation.FraudEvaluator;
 import com.acme.fraud.ingestion.internal.JdbcDeadLetterSink;
 import com.acme.fraud.ingestion.internal.JdbcIngestionLog;
 import com.acme.fraud.ingestion.internal.JdbcRuleSource;
+import com.acme.fraud.ingestion.internal.MeteredDeadLetterSink;
 import com.acme.fraud.ingestion.internal.TransactionEventListener;
 import com.acme.fraud.ruledomain.ConditionParser;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -30,8 +32,8 @@ public class IngestionConfiguration {
   }
 
   @Bean
-  DeadLetterSink deadLetterSink(JdbcClient jdbc, JsonMapper json) {
-    return new JdbcDeadLetterSink(jdbc, json);
+  DeadLetterSink deadLetterSink(JdbcClient jdbc, JsonMapper json, MeterRegistry registry) {
+    return new MeteredDeadLetterSink(new JdbcDeadLetterSink(jdbc, json), registry);
   }
 
   @Bean
