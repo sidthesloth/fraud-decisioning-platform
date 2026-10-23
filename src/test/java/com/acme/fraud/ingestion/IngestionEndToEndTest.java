@@ -21,15 +21,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.redpanda.RedpandaContainer;
 
 /** Publish event -> decision persisted -> outbox relayed to fraud.evaluations/alerts/dlq. */
 @SpringBootTest(classes = FraudApplication.class)
 class IngestionEndToEndTest {
 
   private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine");
-  private static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka-native:3.8.0");
+  private static final RedpandaContainer KAFKA =
+      new RedpandaContainer("docker.redpanda.com/redpandadata/redpanda:v24.2.7");
 
   static {
     POSTGRES.start();
