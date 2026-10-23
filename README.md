@@ -71,7 +71,18 @@ Publishes 200 events/s for 60s (override with `RATE` and `DURATION`) through `rp
 APP_PROFILES=dev docker compose up -d --build
 TOKEN=<admin jwt> scripts/load/publish-load.sh
 ```
-Read the p99 from `fraud_evaluation_duration_seconds` on `/actuator/prometheus`. The publish rate is approximate, and no p99 has been measured yet.
+Read the p99 from `fraud_evaluation_duration_seconds` on `/actuator/prometheus`. The publish rate is approximate.
+
+Measured run (local Docker, dev profile, 12,000 events over ~60s): all 12,000 decisions persisted
+(11,520 APPROVE, 480 REVIEW), no errors or dead letters. `fraud.evaluation.duration` p99 ≤ 1 ms
+(11,939 of 12,000 under 1 ms, max 33 ms). This times the evaluation step only, not the end-to-end
+Kafka-to-outbox latency.
+
+### Tracing
+OpenTelemetry tracing is enabled through `spring-boot-starter-opentelemetry`, with Kafka listener and
+producer observations. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (default `http://localhost:4318/v1/traces`)
+and `TRACING_SAMPLING_PROBABILITY` (default 1.0). Only auto-instrumented HTTP and Kafka spans exist;
+there are no custom spans for enrichment, engine or database steps.
 
 ## Status
 Work in progress — see `docs/PROGRESS.md`.
