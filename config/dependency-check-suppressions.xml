@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+  <suppress until="2027-01-23Z">
+    <notes><![CDATA[
+      Added 2026-10-23, re-check by 2027-01-23.
+      CVE-2026-42154 is a memory-allocation DoS in the Prometheus server's remote-read endpoint
+      (fixed in server 3.5.3 / 3.11.3). It was matched to micrometer-registry-prometheus through
+      the cpe prometheus:prometheus. The Micrometer registry is a client library that only
+      renders the scrape text; it contains no remote-read endpoint or snappy decoding.
+    ]]></notes>
+    <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer-registry-prometheus.*$</packageUrl>
+    <cve>CVE-2026-42154</cve>
+  </suppress>
   <suppress until="2027-01-22Z">
     <notes><![CDATA[
       Added 2026-10-22, re-check by 2027-01-22.

@@ -249,6 +249,7 @@
               <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
               <!-- Sonatype OSS Index rejects anonymous requests (401); NVD analyzer stays active -->
               <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
+              <assemblyAnalyzerEnabled>false</assemblyAnalyzerEnabled>
               <suppressionFiles>
                 <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
               </suppressionFiles>
