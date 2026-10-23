@@ -5,6 +5,7 @@ import com.acme.fraud.decisions.DecisionStore;
 import com.acme.fraud.decisions.DecisionStore.SaveResult;
 import com.acme.fraud.evaluation.Decision;
 import com.acme.fraud.evaluation.FraudEvaluator;
+import org.slf4j.MDC;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -50,6 +51,20 @@ public class TransactionEventProcessor {
    */
   public Result process(String raw) {
     ParsedEvent event = parser.parse(raw);
+    long start = System.nanoTime();
+    MDC.put("transactionId", event.facts().transactionId());
+    MDC.put("customerId", event.facts().customerId());
+    try {
+      return processParsed(event, start);
+    } finally {
+      MDC.remove("transactionId");
+      MDC.remove("customerId");
+      MDC.remove("outcome");
+      MDC.remove("latencyMs");
+    }
+  }
+
+  private Result processParsed(ParsedEvent event, long start) {
     Result result =
         tx.execute(
             status -> {
@@ -58,11 +73,13 @@ public class TransactionEventProcessor {
               }
               Decision decision =
                   evaluator.evaluate(event.facts(), rules.rules(), event.inputHash());
+              MDC.put("outcome", decision.outcome().name());
               SaveResult saved = decisions.save(decision);
               if (decision.flagged()) {
                 alerts.createFor(saved.decisionId(), decision);
               }
               log.recordHistory(event.facts());
+              MDC.put("latencyMs", String.valueOf((System.nanoTime() - start) / 1_000_000));
               return Result.PROCESSED;
             });
     if (result == null) {
