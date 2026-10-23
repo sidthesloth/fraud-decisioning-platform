@@ -5,4 +5,4 @@
 - [x] M2 Evaluation (context enricher, scorer, decisions + snapshots)
 - [x] M3 Ingestion (consumer, inbox, DLT, outbox, e2e tests)
 - [X] M4 API + Security (REST, OpenAPI, OAuth2/RBAC)
-- [ ] M5 Ops (metrics/traces/logs, mock producer, load smoke, README, runbook)
+- [x] M5 Ops (metrics/traces/logs, mock producer, load smoke, README, runbook)
