@@ -222,7 +222,7 @@
         <version>1.17.0</version>
         <configuration>
           <targetClasses><param>com.acme.fraud.evaluation.*</param><param>com.acme.fraud.ruledomain.*</param></targetClasses>
-          <targetTests><param>com.acme.fraud.*</param></targetTests>
+          <targetTests><param>com.acme.fraud.evaluation.*</param><param>com.acme.fraud.ruledomain.*</param></targetTests>
           <mutationThreshold>80</mutationThreshold>
         </configuration>
       </plugin>
