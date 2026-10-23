@@ -65,5 +65,13 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/actuator/prometheus
 ## Operations
 Failure drills (broker down, duplicates, poison messages, slow DB, DLQ replay): `docs/RUNBOOK.md`.
 
+### Load smoke test
+Publishes 200 events/s for 60s (override with `RATE` and `DURATION`) through `rpk` in the compose Redpanda container:
+```bash
+APP_PROFILES=dev docker compose up -d --build
+TOKEN=<admin jwt> scripts/load/publish-load.sh
+```
+Read the p99 from `fraud_evaluation_duration_seconds` on `/actuator/prometheus`. The publish rate is approximate, and no p99 has been measured yet.
+
 ## Status
 Work in progress — see `docs/PROGRESS.md`.
