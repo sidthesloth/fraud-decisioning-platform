@@ -3,6 +3,16 @@
   <suppress until="2027-01-23Z">
     <notes><![CDATA[
       Added 2026-10-23, re-check by 2027-01-23.
+      CVE-2026-0994 affects google.protobuf.json_format.ParseDict() in the Python protobuf
+      package (RecursionError on nested Any). protobuf-java is a different implementation and
+      this app never parses JSON Any messages from untrusted input. CPE false positive.
+    ]]></notes>
+    <packageUrl regex="true">^pkg:maven/com\.google\.protobuf/protobuf-java@.*$</packageUrl>
+    <cve>CVE-2026-0994</cve>
+  </suppress>
+  <suppress until="2027-01-23Z">
+    <notes><![CDATA[
+      Added 2026-10-23, re-check by 2027-01-23.
       CVE-2026-42154 is a memory-allocation DoS in the Prometheus server's remote-read endpoint
       (fixed in server 3.5.3 / 3.11.3). It was matched to micrometer-registry-prometheus through
       the cpe prometheus:prometheus. The Micrometer registry is a client library that only
