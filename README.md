@@ -26,6 +26,61 @@ REST is used only for queries. See `docs/adr/`.
 
 Module mapping to the brief: ingestion-adapter=`ingestion`, rule-domain=`ruledomain`, evaluation-domain=`evaluation`, alert-domain=`alert`, decision-store=`decisions`, retrieval-api=`api` (see ADR-005).
 
+## How the system flows (write path)
+A categorized transaction event is consumed from Kafka, evaluated against the versioned fraud
+rules, stored as an immutable decision (plus an alert when flagged), and published onward.
+
+```
+Producer
+  | payments.transactions.categorized.v1
+  v
+TransactionEventListener   (sets MDC eventId/traceId/spanId, manual ack after success)
+  v
+ResilientEventHandler      (3 attempts, exponential backoff; invalid events skip retries)
+  |  failure ----------------------> DeadLetterSink --> outbox row (fraud.dlq.v1)
+  v
+TransactionEventProcessor  -- ONE DB transaction --------------------------------------+
+  1. inbox claim: insert event id into processed_events (duplicate => no-op)           |
+  2. FraudEvaluator                                                                    |
+       enrich (last-hour count, 24h amount, new device, cross-border)                  |
+         behind circuit breaker + bulkhead; on failure enrichmentDegraded=true         |
+       RuleEngine: versioned rules in priority order (amount, channel, country, ...)   |
+       RiskScorer: sum contributions (cap 100) -> APPROVE | REVIEW | DECLINE           |
+  3. JdbcDecisionStore: decision + matched-rule snapshots + outbox row                 |
+       (fraud.evaluations.v1)                                                          |
+  4. JdbcAlertStore (only REVIEW/DECLINE): alert + audit entry + outbox row            |
+       (fraud.alerts.v1)                                                               |
+  5. transaction_history update (feeds future velocity/aggregate features)             |
+  +-------------------------------------------------------------------------------------+
+  v
+OutboxRelay (scheduled poller, ordered by created_at, id) --> Kafka
+  fraud.evaluations.v1 | fraud.alerts.v1 | fraud.dlq.v1
+```
+
+1. **Intake.** `TransactionEventListener` copies the record key (`eventId`) and the `traceparent`
+   header (`traceId`, `spanId`) into the logging context (MDC) so every log line for the message is
+   correlated, and acknowledges manually only after processing has settled. A crash or rebalance
+   causes redelivery, never loss.
+2. **Retry and dead letter.** `ResilientEventHandler` retries up to 3 times with exponential
+   backoff. Unparseable or invalid events go straight to `DeadLetterSink`, as do events that exhaust
+   retries. The dead letter is an outbox row carrying the original message, the error and the
+   attempt count. If that write fails, the message is not acked and Kafka redelivers it.
+3. **Atomic processing.** Inbox claim, evaluation, decision, alert and outbox rows commit or roll
+   back together, including the inbox claim, so a retry starts clean. The inbox makes consumption
+   idempotent by event id.
+4. **Evaluation.** Rules are applied per transaction on different criteria (amount, channel,
+   country, velocity). If enrichment is unavailable, evaluation still completes, rules that need
+   enriched fields are skipped, and the decision is annotated as degraded.
+5. **Storage.** Matched-rule snapshots (rule id, version, contribution, reason code) are stored
+   with the decision, so later rule edits never rewrite history.
+6. **Publishing.** Outbox rows are written in the same transaction as the state change (no
+   dual write). `OutboxRelay` marks a row published only after the broker acknowledges and stops at
+   the first failure to keep order. Delivery is at-least-once; idempotent consumers make the effect
+   exactly-once.
+
+The read path is separate: the REST API only queries stored decisions, alerts and rules.
+Failure behaviour for each stage is exercised in `docs/RUNBOOK.md`.
+
 ## Build, run, test
 ```bash
 ./mvnw clean verify          # full gate: unit + archunit + testcontainers + integration
