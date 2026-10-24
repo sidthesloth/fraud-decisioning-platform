@@ -9,3 +9,6 @@ target/
 *.log
 .jqwik-database
 .junie/
+
+# Private interview notes
+docs/INTERVIEW_PREP.md

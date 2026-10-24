@@ -64,7 +64,6 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/actuator/prometheus
 
 ## Operations
 Failure drills (broker down, duplicates, poison messages, slow DB, DLQ replay): `docs/RUNBOOK.md`.
-Interview preparation (agenda, talk track, Q&A, trade-offs): `docs/INTERVIEW_PREP.md`.
 
 ### Load smoke test
 Publishes 200 events/s for 60s (override with `RATE` and `DURATION`) through `rpk` in the compose Redpanda container:
@@ -84,6 +83,15 @@ OpenTelemetry tracing is enabled through `spring-boot-starter-opentelemetry`, wi
 producer observations. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (default `http://localhost:4318/v1/traces`)
 and `TRACING_SAMPLING_PROBABILITY` (default 1.0). Only auto-instrumented HTTP and Kafka spans exist;
 there are no custom spans for enrichment, engine or database steps.
+
+## Known limitations and future work
+- Business values are placeholders (`TODO(ADAPTER)`): score thresholds (40/80), alert severity bands, home country for cross-border. `customer.riskTier` and `geo.velocity` need a data source and are currently unavailable (null).
+- The outbox relay is a single poller (no `SKIP LOCKED`). Running several instances needs batch locking or CDC.
+- The input topic is keyed by whatever the producer sets. Keying by account id would give per-account ordering.
+- Metrics are incremented inside the processing transaction and can overcount on rollback.
+- `metrics-summary` is a live query, not a roll-up. `decisions` and `transaction_history` are not partitioned and have no retention policy.
+- `fraud.rules.commands.v1` is not built (ADR-005). Categorisation is assumed upstream.
+- No custom tracing spans. The dev profile uses a shared local JWT secret; production needs an IdP.
 
 ## Status
 Work in progress — see `docs/PROGRESS.md`.
