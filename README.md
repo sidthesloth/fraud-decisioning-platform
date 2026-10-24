@@ -64,6 +64,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/actuator/prometheus
 
 ## Operations
 Failure drills (broker down, duplicates, poison messages, slow DB, DLQ replay): `docs/RUNBOOK.md`.
+Interview preparation (agenda, talk track, Q&A, trade-offs): `docs/INTERVIEW_PREP.md`.
 
 ### Load smoke test
 Publishes 200 events/s for 60s (override with `RATE` and `DURATION`) through `rpk` in the compose Redpanda container:
