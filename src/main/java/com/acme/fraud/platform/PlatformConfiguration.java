@@ -26,10 +26,12 @@ public class PlatformConfiguration {
   @Bean
   OutboxRelay outboxRelay(
       JdbcClient jdbc,
+      org.springframework.transaction.support.TransactionTemplate transactionTemplate,
       KafkaTemplate<String, String> kafka,
       @Value("${fraud.outbox.batch-size:100}") int batchSize,
       @Value("${fraud.outbox.publish-timeout-seconds:10}") long timeoutSeconds) {
-    return new OutboxRelay(jdbc, new KafkaMessagePublisher(kafka, timeoutSeconds), batchSize);
+    return new OutboxRelay(
+        jdbc, new KafkaMessagePublisher(kafka, timeoutSeconds), batchSize, transactionTemplate);
   }
 
   @Bean

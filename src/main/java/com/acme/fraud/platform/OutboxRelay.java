@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.support.TransactionOperations;
 
 /**
  * Publishes unpublished outbox rows in creation order and marks each as published only after the
@@ -24,19 +25,36 @@ public class OutboxRelay {
   private final JdbcClient jdbc;
   private final MessagePublisher publisher;
   private final int batchSize;
+  private final TransactionOperations tx;
 
   public OutboxRelay(JdbcClient jdbc, MessagePublisher publisher, int batchSize) {
+    this(jdbc, publisher, batchSize, TransactionOperations.withoutTransaction());
+  }
+
+  /**
+   * With a real transaction, the batch is locked with FOR UPDATE SKIP LOCKED so several app
+   * instances can relay concurrently without publishing the same rows.
+   */
+  public OutboxRelay(
+      JdbcClient jdbc, MessagePublisher publisher, int batchSize, TransactionOperations tx) {
     this.jdbc = jdbc;
     this.publisher = publisher;
     this.batchSize = batchSize;
+    this.tx = tx;
   }
 
   /** Publishes one batch; returns the number of rows published. */
   public int relayBatch() {
+    Integer n = tx.execute(status -> doRelayBatch());
+    return n == null ? 0 : n;
+  }
+
+  private int doRelayBatch() {
     List<Row> rows =
         jdbc.sql(
                 "SELECT id, topic, message_key, payload::text AS payload FROM outbox WHERE"
-                    + " published_at IS NULL ORDER BY created_at, id LIMIT :n")
+                    + " published_at IS NULL ORDER BY created_at, id LIMIT :n FOR UPDATE SKIP"
+                    + " LOCKED")
             .param("n", batchSize)
             .query(
                 (rs, i) ->

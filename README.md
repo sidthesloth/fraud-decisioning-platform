@@ -148,13 +148,18 @@ producer observations. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (default `http:/
 and `TRACING_SAMPLING_PROBABILITY` (default 1.0). Only auto-instrumented HTTP and Kafka spans exist;
 there are no custom spans for enrichment, engine or database steps.
 
-`docker-compose.yml` sets sampling to 0.0 and disables OTLP export, because no collector runs there
+`docker-compose.yml` sets sampling to 0.0 and disables OTLP trace and metric export (`Failed to publish metrics to OTLP receiver` otherwise), because no collector runs there
 (otherwise the app logs `Failed to export spans ... localhost:4318`). To trace, run a collector and set
 `TRACING_SAMPLING_PROBABILITY=1.0`, `OTEL_EXPORT_ENABLED=true` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`.
 
+### Production configuration
+Compose defaults are for local demo only. For a real deployment set `POSTGRES_USER` / `POSTGRES_PASSWORD`
+(from a secrets manager), run without the `dev` profile (`APP_PROFILES=prod`) and point
+`spring.security.oauth2.resourceserver.jwt.issuer-uri` at your IdP instead of the shared HS256 secret.
+
 ## Known limitations and future work
 - Business values are placeholders (`TODO(ADAPTER)`): score thresholds (40/80), alert severity bands, home country for cross-border. `customer.riskTier` and `geo.velocity` need a data source and are currently unavailable (null).
-- The outbox relay is a single poller (no `SKIP LOCKED`). Running several instances needs batch locking or CDC.
+- The outbox relay locks each batch with `FOR UPDATE SKIP LOCKED`, so several instances can run safely. Ordering is per batch, not global across instances; strict global ordering would need a single relay or partitioned keys.
 - The input topic is keyed by whatever the producer sets. Keying by account id would give per-account ordering.
 - Metrics are incremented inside the processing transaction and can overcount on rollback.
 - `metrics-summary` is a live query, not a roll-up. `decisions` and `transaction_history` are not partitioned and have no retention policy.
