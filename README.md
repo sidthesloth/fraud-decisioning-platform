@@ -88,7 +88,16 @@ docker compose up --build    # app + postgres + redpanda
 ```
 API docs: `/swagger-ui.html` and `/v3/api-docs` (public)  |  Metrics: `/actuator/prometheus` (admin JWT). Logs are structured JSON outside the `dev` profile.
 
-Check it is up: `curl localhost:8080/actuator/health` returns `{"status":"UP"}`.
+### Confirm it works
+- **Tests:** `./mvnw clean verify` must end with `BUILD SUCCESS` (Docker must be running for the Testcontainers tests). Per-test results are in `target/surefire-reports/` and `target/failsafe-reports/`.
+- **Health:** `curl localhost:8080/actuator/health` returns `{"status":"UP"}`.
+- **Public API docs (no token needed):**
+  ```bash
+  curl -s -o /dev/null -w "%{http_code}\n" localhost:8080/v3/api-docs        # 200
+  curl -s -o /dev/null -w "%{http_code}\n" -L localhost:8080/swagger-ui.html # 200 (redirects to /swagger-ui/index.html)
+  ```
+  Or open <http://localhost:8080/swagger-ui.html> in a browser.
+- **Protected endpoints stay protected:** `curl -s -o /dev/null -w "%{http_code}\n" localhost:8080/api/v1/decisions` returns `401` without a token (see *Calling the API* for a dev JWT).
 
 ### Tear down
 ```bash
