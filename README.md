@@ -167,4 +167,4 @@ Compose defaults are for local demo only. For a real deployment set `POSTGRES_US
 - No custom tracing spans. The dev profile uses a shared local JWT secret; production needs an IdP.
 
 ## Status
-Work in progress — see `docs/PROGRESS.md`.
+Milestones M0–M5 complete (see `docs/PROGRESS.md`). Open items are listed under *Known limitations and future work*; business values marked `TODO(ADAPTER)` await confirmation rather than being invented.
