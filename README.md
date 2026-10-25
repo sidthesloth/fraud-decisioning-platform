@@ -90,7 +90,7 @@ API docs: `/swagger-ui.html` and `/v3/api-docs` (public)  |  Metrics: `/actuator
 
 ### Confirm it works
 - **Tests:** `./mvnw clean verify` must end with `BUILD SUCCESS` (Docker must be running for the Testcontainers tests). Per-test results are in `target/surefire-reports/` and `target/failsafe-reports/`.
-- **Health:** `curl localhost:8080/actuator/health` returns `{"status":"UP"}`.
+- **Health:** `curl localhost:8080/actuator/health` returns `{"groups":["liveness","readiness"],"status":"UP"}`.
 - **Public API docs (no token needed):**
   ```bash
   curl -s -o /dev/null -w "%{http_code}\n" localhost:8080/v3/api-docs        # 200
