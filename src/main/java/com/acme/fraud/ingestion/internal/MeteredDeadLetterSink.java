@@ -17,6 +17,7 @@ public final class MeteredDeadLetterSink implements DeadLetterSink {
   @Override
   public void send(String rawMessage, String errorType, String errorMessage, int attempts) {
     delegate.send(rawMessage, errorType, errorMessage, attempts);
-    registry.counter("fraud.dlq.messages.total", "error_type", errorType).increment();
+    com.acme.fraud.AfterCommit.run(
+        () -> registry.counter("fraud.dlq.messages.total", "error_type", errorType).increment());
   }
 }

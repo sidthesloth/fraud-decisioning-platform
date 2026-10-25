@@ -23,24 +23,28 @@ public final class MeteredDecisionStore implements DecisionStore {
   public SaveResult save(Decision decision) {
     SaveResult result = delegate.save(decision);
     if (result.created()) {
-      registry
-          .counter(
-              "fraud.evaluations.total",
-              "outcome",
-              decision.outcome().name(),
-              "engine_version",
-              decision.engineVersion())
-          .increment();
-      for (MatchedRule m : decision.matchedRules()) {
-        registry
-            .counter("fraud.rule.matched.total", "rule_id", m.ruleId() + "@" + m.version())
-            .increment();
-      }
-      if (decision.enrichmentDegraded()) {
-        registry.counter("fraud.enrichment.degraded.total").increment();
-      }
+      com.acme.fraud.AfterCommit.run(() -> record(decision));
     }
     return result;
+  }
+
+  private void record(Decision decision) {
+    registry
+        .counter(
+            "fraud.evaluations.total",
+            "outcome",
+            decision.outcome().name(),
+            "engine_version",
+            decision.engineVersion())
+        .increment();
+    for (MatchedRule m : decision.matchedRules()) {
+      registry
+          .counter("fraud.rule.matched.total", "rule_id", m.ruleId() + "@" + m.version())
+          .increment();
+    }
+    if (decision.enrichmentDegraded()) {
+      registry.counter("fraud.enrichment.degraded.total").increment();
+    }
   }
 
   @Override

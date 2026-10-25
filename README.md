@@ -161,7 +161,7 @@ Compose defaults are for local demo only. For a real deployment set `POSTGRES_US
 - Business values are placeholders (`TODO(ADAPTER)`): score thresholds (40/80), alert severity bands, home country for cross-border. `customer.riskTier` and `geo.velocity` need a data source and are currently unavailable (null).
 - The outbox relay locks each batch with `FOR UPDATE SKIP LOCKED`, so several instances can run safely. Ordering is per batch, not global across instances; strict global ordering would need a single relay or partitioned keys.
 - The input topic is keyed by whatever the producer sets. Keying by account id would give per-account ordering.
-- Metrics are incremented inside the processing transaction and can overcount on rollback.
+- Evaluation, alert and dead-letter counters are incremented after the transaction commits (`AfterCommit`), so rolled-back work is not counted.
 - `metrics-summary` is a live query, not a roll-up. `decisions` and `transaction_history` are not partitioned and have no retention policy.
 - `fraud.rules.commands.v1` is not built (ADR-005). Categorisation is assumed upstream.
 - No custom tracing spans. The dev profile uses a shared local JWT secret; production needs an IdP.

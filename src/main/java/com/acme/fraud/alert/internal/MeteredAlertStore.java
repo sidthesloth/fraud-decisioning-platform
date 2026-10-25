@@ -22,7 +22,8 @@ public final class MeteredAlertStore implements AlertStore {
   public CreateResult createFor(UUID decisionId, Decision decision) {
     CreateResult result = delegate.createFor(decisionId, decision);
     if (result.created()) {
-      registry.counter("fraud.alerts.created.total").increment();
+      com.acme.fraud.AfterCommit.run(
+          () -> registry.counter("fraud.alerts.created.total").increment());
     }
     return result;
   }
