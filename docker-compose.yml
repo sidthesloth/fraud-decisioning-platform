@@ -42,6 +42,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: fraud
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       SPRING_PROFILES_ACTIVE: ${APP_PROFILES:-dev}
+      # No OTLP collector in this compose file: don't sample/export spans by default.
+      # To trace, run a collector and set TRACING_SAMPLING_PROBABILITY=1.0 and OTEL_EXPORTER_OTLP_TRACES_ENDPOINT.
+      TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.0}
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENABLED: ${OTEL_EXPORT_ENABLED:-false}
     ports: ["8080:8080"]
 
 volumes:

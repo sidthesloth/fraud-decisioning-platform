@@ -88,6 +88,15 @@ docker compose up --build    # app + postgres + redpanda
 ```
 API docs: `/swagger-ui.html` and `/v3/api-docs` (public)  |  Metrics: `/actuator/prometheus` (admin JWT). Logs are structured JSON outside the `dev` profile.
 
+Check it is up: `curl localhost:8080/actuator/health` returns `{"status":"UP"}`.
+
+### Tear down
+```bash
+docker compose down        # stop and remove containers, keep the Postgres volume (data survives)
+docker compose down -v     # also delete the pgdata volume (clean slate)
+```
+If you started with a profile (e.g. `APP_PROFILES=dev,mock-producer`), no need to repeat it for `down`.
+
 ### Mock producer
 
 Publishes a fixed catalog (normal, high-value cross-border, 6-event velocity burst, one malformed
@@ -138,6 +147,10 @@ OpenTelemetry tracing is enabled through `spring-boot-starter-opentelemetry`, wi
 producer observations. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (default `http://localhost:4318/v1/traces`)
 and `TRACING_SAMPLING_PROBABILITY` (default 1.0). Only auto-instrumented HTTP and Kafka spans exist;
 there are no custom spans for enrichment, engine or database steps.
+
+`docker-compose.yml` sets sampling to 0.0 and disables OTLP export, because no collector runs there
+(otherwise the app logs `Failed to export spans ... localhost:4318`). To trace, run a collector and set
+`TRACING_SAMPLING_PROBABILITY=1.0`, `OTEL_EXPORT_ENABLED=true` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`.
 
 ## Known limitations and future work
 - Business values are placeholders (`TODO(ADAPTER)`): score thresholds (40/80), alert severity bands, home country for cross-border. `customer.riskTier` and `geo.velocity` need a data source and are currently unavailable (null).
