@@ -229,7 +229,7 @@ Compose defaults are for local demo only (ports are bound to `127.0.0.1`). For a
 - Evaluation, alert and dead-letter counters are incremented after the transaction commits (`AfterCommit`), so rolled-back work is not counted.
 - `metrics-summary` is a live query, not a roll-up. `decisions` and `transaction_history` are not partitioned and have no retention policy.
 - `fraud.rules.commands.v1` is not built (ADR-005). Categorisation is assumed upstream.
-- No custom tracing spans. The dev profile uses a shared local JWT secret; production uses the `prod` profile with an IdP issuer (see *Production configuration*). That path is configuration-only and is not covered by an automated test against a real IdP.
+- No custom tracing spans. The dev profile uses a shared local JWT secret; production uses the `prod` profile with an IdP issuer (see *Production configuration*). The `prod` path is covered by `ProdProfileIdentityProviderTest` against a local OIDC provider (discovery, JWKS, `iss`, `exp`, role mapping); it has not been run against a real IdP such as Keycloak, Entra or Auth0, whose role claim must be mapped to a top-level `roles` claim.
 
 ## Status
 Milestones M0–M5 complete (see `docs/PROGRESS.md`). Open items are listed under *Known limitations and future work*; business values marked `TODO(ADAPTER)` await confirmation rather than being invented.
