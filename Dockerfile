@@ -19,4 +19,5 @@ ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0"
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
   CMD curl -fsS http://localhost:8080/actuator/health || exit 1
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# exec: java becomes PID 1 and receives SIGTERM, so graceful shutdown works.
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

@@ -28,9 +28,15 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
 
   modulith:
     detection-strategy: explicitly-annotated
+
+server:
+  # Finish in-flight requests on SIGTERM (compose gives the container 30s).
+  shutdown: graceful
 
 fraud:
   security:
@@ -39,6 +45,8 @@ fraud:
     # with neither, startup fails because no JwtDecoder exists. The public dev secret is rejected
     # outside the dev profile.
     jwt-secret: ${FRAUD_JWT_SECRET:}
+    # Claim holding the roles; a dotted path is allowed (Keycloak: realm_access.roles).
+    roles-claim: ${FRAUD_SECURITY_ROLES_CLAIM:roles}
 
 management:
   endpoints:

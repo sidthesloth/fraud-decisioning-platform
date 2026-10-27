@@ -211,16 +211,27 @@ Compose defaults are for local demo only (ports are bound to `127.0.0.1`). For a
 - Set `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` and `KAFKA_BOOTSTRAP_SERVERS` from a secrets manager.
 - Run with the `prod` profile (`APP_PROFILES=prod`) and set `JWT_ISSUER_URI` to your IdP. The `prod`
   profile uses Spring Boot's issuer-based JWT decoder, requires the issuer (startup fails without
-  it) and disables Swagger UI and `/v3/api-docs`. Tokens need a `roles` claim (`FRAUD_ANALYST`,
-  `FRAUD_ADMIN`).
+  it) and disables Swagger UI and `/v3/api-docs`. Tokens need a roles claim (`FRAUD_ANALYST`,
+  `FRAUD_ADMIN`). The claim defaults to top-level `roles`; set `FRAUD_SECURITY_ROLES_CLAIM` to a dotted
+  path if your IdP nests it (Keycloak: `realm_access.roles`).
+- Optional audience check: set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES` (for example `fraud-api`).
+- Transport security uses standard properties, no code change needed: Postgres
+  `DB_URL=jdbc:postgresql://host/db?sslmode=verify-full`; Kafka
+  `SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL=SASL_SSL` plus matching
+  `SPRING_KAFKA_PROPERTIES_SASL_MECHANISM` and `SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG`.
+- `docker-compose.yml` forwards `JWT_ISSUER_URI`, `FRAUD_JWT_SECRET`, the roles claim and audience
+  variables when they are set, e.g. `APP_PROFILES=prod JWT_ISSUER_URI=https://idp/realms/fraud docker compose up`.
+- The app shuts down gracefully on SIGTERM (`server.shutdown=graceful`, 20s per phase); the image runs
+  java as PID 1 so the signal reaches it.
 - Do not set `FRAUD_JWT_SECRET`. The HS256 decoder exists only when that secret is set, and the
   public dev secret is rejected at startup unless the `dev` profile is active.
 
 ### Security posture
 - JWT on every `/api/**` route, deny by default, roles `FRAUD_ANALYST` (read) and `FRAUD_ADMIN` (rules, DLQ replay, metrics). Admin rule changes and DLQ replay are rate limited.
-- Customer ids are masked in logs (`cust_12345` becomes `cust_***5`).
+- Customer ids are masked in logs (`cust_12345` becomes `cust_***5`); a test checks the masked value in the logging context.
+- Authentication failures (401) and access denials (403) are logged by the `fraud.security.audit` logger (method, path, reason; never the token) and counted in `fraud.security.failures.total` (tag `type`).
 - No default secrets outside `dev`; OWASP dependency-check fails the build at CVSS 7 or higher.
-- Not covered here, left to the platform: TLS to Postgres and Kafka, broker authentication (SASL), `iss`/`aud` checks beyond what the IdP issuer provides, and authentication failure auditing.
+- Left to the platform: TLS and SASL endpoints for Postgres and Kafka (the app only needs the connection properties above) and alerting on the failure counter.
 
 ## Known limitations and future work
 - Business values are placeholders (`TODO(ADAPTER)`): score thresholds (40/80), alert severity bands, home country for cross-border. `customer.riskTier` and `geo.velocity` need a data source and are currently unavailable (null).
@@ -229,7 +240,7 @@ Compose defaults are for local demo only (ports are bound to `127.0.0.1`). For a
 - Evaluation, alert and dead-letter counters are incremented after the transaction commits (`AfterCommit`), so rolled-back work is not counted.
 - `metrics-summary` is a live query, not a roll-up. `decisions` and `transaction_history` are not partitioned and have no retention policy.
 - `fraud.rules.commands.v1` is not built (ADR-005). Categorisation is assumed upstream.
-- No custom tracing spans. The dev profile uses a shared local JWT secret; production uses the `prod` profile with an IdP issuer (see *Production configuration*). The `prod` path is covered by `ProdProfileIdentityProviderTest` against a local OIDC provider (discovery, JWKS, `iss`, `exp`, role mapping); it has not been run against a real IdP such as Keycloak, Entra or Auth0, whose role claim must be mapped to a top-level `roles` claim.
+- No custom tracing spans. The dev profile uses a shared local JWT secret; production uses the `prod` profile with an IdP issuer (see *Production configuration*). The `prod` path is covered by `ProdProfileIdentityProviderTest` against a local OIDC provider (discovery, JWKS, `iss`, `exp`, role mapping); it has not been run against a real IdP such as Keycloak, Entra or Auth0, whose role claim path must be set via `FRAUD_SECURITY_ROLES_CLAIM` when it is not a top-level `roles` (nested paths are unit-tested in `RolesClaimConverterTest`).
 
 ## Status
 Milestones M0–M5 complete (see `docs/PROGRESS.md`). Open items are listed under *Known limitations and future work*; business values marked `TODO(ADAPTER)` await confirmation rather than being invented.

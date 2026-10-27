@@ -36,17 +36,24 @@ services:
         condition: service_healthy
       redpanda:
         condition: service_healthy
+    # Pass-through entries (no value) are forwarded only when set in the shell or .env. A prod-style run:
+    #   APP_PROFILES=prod JWT_ISSUER_URI=https://idp/realms/fraud docker compose up
+    # Do not set FRAUD_JWT_SECRET together with the prod profile.
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fraud
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-fraud}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-fraud}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
-      SPRING_PROFILES_ACTIVE: ${APP_PROFILES:-dev}
+      - FRAUD_JWT_SECRET
+      - JWT_ISSUER_URI
+      - FRAUD_SECURITY_ROLES_CLAIM
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/fraud
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-fraud}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-fraud}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+      - SPRING_PROFILES_ACTIVE=${APP_PROFILES:-dev}
       # No OTLP collector in this compose file: don't sample/export spans by default.
       # To trace, run a collector and set TRACING_SAMPLING_PROBABILITY=1.0 and OTEL_EXPORTER_OTLP_TRACES_ENDPOINT.
-      TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.0}
-      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENABLED: ${OTEL_EXPORT_ENABLED:-false}
-      MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED: ${OTEL_EXPORT_ENABLED:-false}
+      - TRACING_SAMPLING_PROBABILITY=${TRACING_SAMPLING_PROBABILITY:-0.0}
+      - MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENABLED=${OTEL_EXPORT_ENABLED:-false}
+      - MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED=${OTEL_EXPORT_ENABLED:-false}
     ports: ["127.0.0.1:8080:8080"]
     restart: unless-stopped
     stop_grace_period: 30s

@@ -24,6 +24,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -39,6 +40,7 @@ class TransactionEventProcessorTest {
   private static TransactionEventProcessor processor;
   private static volatile List<RuleVersion> rules;
   private static volatile boolean enrichmentDown;
+  private static volatile String customerIdSeenDuringEvaluation;
 
   private static RuleVersion amountRule(int version, int score) {
     return new RuleVersion(
@@ -81,6 +83,7 @@ class TransactionEventProcessorTest {
     FraudEvaluator evaluator =
         new FraudEvaluator(
             f -> {
+              customerIdSeenDuringEvaluation = MDC.get("customerId");
               if (enrichmentDown) {
                 throw new com.acme.fraud.evaluation.EnrichmentUnavailableException("down", null);
               }
@@ -104,6 +107,15 @@ class TransactionEventProcessorTest {
   @AfterAll
   static void stop() {
     POSTGRES.stop();
+  }
+
+  @Test
+  void putsMaskedCustomerIdInLoggingContextAndClearsItAfterwards() {
+    customerIdSeenDuringEvaluation = null;
+    processor.process(event("evt_mdc", "txn_mdc", "10.00"));
+    assertThat(customerIdSeenDuringEvaluation).isEqualTo("cust_***");
+    assertThat(MDC.get("customerId")).isNull();
+    assertThat(MDC.get("transactionId")).isNull();
   }
 
   @BeforeEach

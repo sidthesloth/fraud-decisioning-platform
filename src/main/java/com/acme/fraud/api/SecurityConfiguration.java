@@ -1,5 +1,7 @@
 package com.acme.fraud.api;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -9,14 +11,15 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * JWT resource server. Roles come from the {@code roles} claim (e.g. {@code FRAUD_ANALYST}) and map
- * to {@code ROLE_*} authorities. The {@code JwtDecoder} comes from {@link
- * Hs256JwtDecoderConfiguration} (dev/test shared secret) or, in production, from Spring Boot's
- * issuer-based auto-configuration; the filter chain is the same in both cases.
+ * JWT resource server. Roles come from the claim named by {@code fraud.security.roles-claim}
+ * (default {@code roles}; a dotted path such as {@code realm_access.roles} is supported) and map to
+ * {@code ROLE_*} authorities. Authentication and authorization failures are logged and counted. The
+ * {@code JwtDecoder} comes from {@link Hs256JwtDecoderConfiguration} (dev/test shared secret) or,
+ * in production, from Spring Boot's issuer-based auto-configuration; the filter chain is the same
+ * in both cases.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
@@ -26,7 +29,11 @@ public class SecurityConfiguration {
   public static final String ADMIN = "FRAUD_ADMIN";
 
   @Bean
-  SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
+  SecurityFilterChain apiSecurity(
+      HttpSecurity http,
+      MeterRegistry meters,
+      @Value("${fraud.security.roles-claim:roles}") String rolesClaim)
+      throws Exception {
     http.csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
@@ -44,20 +51,26 @@ public class SecurityConfiguration {
                     .anyRequest()
                     .hasRole(ADMIN))
         .oauth2ResourceServer(
-            oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
+            oauth ->
+                oauth
+                    .jwt(
+                        jwt ->
+                            jwt.jwtAuthenticationConverter(jwtAuthenticationConverter(rolesClaim)))
+                    .authenticationEntryPoint(SecurityAuditHandlers.entryPoint(meters))
+                    .accessDeniedHandler(SecurityAuditHandlers.accessDeniedHandler(meters)))
+        .exceptionHandling(
+            e ->
+                e.authenticationEntryPoint(SecurityAuditHandlers.entryPoint(meters))
+                    .accessDeniedHandler(SecurityAuditHandlers.accessDeniedHandler(meters)))
         .httpBasic(AbstractHttpConfigurer::disable)
         .formLogin(AbstractHttpConfigurer::disable)
         .headers(Customizer.withDefaults());
     return http.build();
   }
 
-  @Bean
-  JwtAuthenticationConverter jwtAuthenticationConverter() {
-    JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
-    authorities.setAuthoritiesClaimName("roles");
-    authorities.setAuthorityPrefix("ROLE_");
+  static JwtAuthenticationConverter jwtAuthenticationConverter(String rolesClaim) {
     JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-    converter.setJwtGrantedAuthoritiesConverter(authorities);
+    converter.setJwtGrantedAuthoritiesConverter(new RolesClaimConverter(rolesClaim));
     return converter;
   }
 }

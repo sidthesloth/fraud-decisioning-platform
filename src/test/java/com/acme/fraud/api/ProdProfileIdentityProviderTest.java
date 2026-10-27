@@ -11,6 +11,7 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
@@ -66,6 +67,7 @@ class ProdProfileIdentityProviderTest {
 
   @Autowired MockMvc mvc;
   @Autowired ApplicationContext context;
+  @Autowired MeterRegistry meters;
 
   private static String bearer(String token) {
     return "Bearer " + token;
@@ -86,7 +88,21 @@ class ProdProfileIdentityProviderTest {
 
   @Test
   void rejectsRequestWithoutToken() throws Exception {
+    double before = failures("unauthenticated");
     mvc.perform(get("/api/v1/decisions")).andExpect(status().isUnauthorized());
+    assertThat(failures("unauthenticated")).isEqualTo(before + 1);
+  }
+
+  @Test
+  void countsAccessDeniedResponses() throws Exception {
+    double before = failures("forbidden");
+    mvc.perform(get("/actuator/prometheus").header("Authorization", analyst()))
+        .andExpect(status().isForbidden());
+    assertThat(failures("forbidden")).isEqualTo(before + 1);
+  }
+
+  private double failures(String type) {
+    return meters.counter("fraud.security.failures.total", "type", type).count();
   }
 
   @Test
@@ -163,9 +179,10 @@ class ProdProfileIdentityProviderTest {
   }
 
   /**
-   * Documents a deployment constraint: roles are read from a top-level {@code roles} claim only. An
-   * IdP that nests them (for example Keycloak's {@code realm_access.roles}) must be configured with
-   * a mapper that emits {@code roles}, otherwise every user is authenticated but has no access.
+   * With the default {@code fraud.security.roles-claim=roles}, roles nested elsewhere are not
+   * mapped: the user is authenticated but has no access. An IdP that nests them (for example
+   * Keycloak's {@code realm_access.roles}) needs {@code FRAUD_SECURITY_ROLES_CLAIM} set to that
+   * path (see {@code RolesClaimConverterTest}).
    */
   @Test
   void rolesNestedInRealmAccessAreNotMapped() throws Exception {

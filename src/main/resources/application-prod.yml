@@ -5,8 +5,10 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          # Required: startup fails if JWT_ISSUER_URI is unset. Tokens must carry a `roles` claim
-          # (FRAUD_ANALYST / FRAUD_ADMIN). Do not set FRAUD_JWT_SECRET in production.
+          # Required: startup fails if JWT_ISSUER_URI is unset. Tokens must carry the roles claim
+          # named by FRAUD_SECURITY_ROLES_CLAIM (default `roles`; dotted path allowed, e.g.
+          # realm_access.roles) with FRAUD_ANALYST / FRAUD_ADMIN. Do not set FRAUD_JWT_SECRET.
+          # Optional audience check: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=fraud-api
           issuer-uri: ${JWT_ISSUER_URI}
 
 springdoc:
