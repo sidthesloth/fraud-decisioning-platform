@@ -134,7 +134,7 @@ docker compose up --build    # app + postgres + redpanda
 API docs: `/swagger-ui.html` and `/v3/api-docs` (public)  |  Metrics: `/actuator/prometheus` (admin JWT). Logs are structured JSON outside the `dev` profile.
 
 ### Confirm it works
-- **Tests:** `./mvnw clean verify` must end with `BUILD SUCCESS` (Docker must be running for the Testcontainers tests). Per-test results are in `target/surefire-reports/` and `target/failsafe-reports/`.
+- **Tests:** `./mvnw clean verify` must end with `BUILD SUCCESS` (Docker must be running for the Testcontainers tests). Per-test results are in `target/surefire-reports/`.
 - **Health:** `curl localhost:8080/actuator/health` returns `{"groups":["liveness","readiness"],"status":"UP"}`.
 - **Public API docs (no token needed):**
   ```bash
