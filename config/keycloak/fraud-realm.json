@@ -1,0 +1,55 @@
+{
+  "realm": "fraud",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 3600,
+  "roles": {
+    "realm": [
+      { "name": "FRAUD_ANALYST", "description": "Read decisions, alerts and rules" },
+      { "name": "FRAUD_ADMIN", "description": "Manage rules, DLQ replay, metrics" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "fraud-api",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "fraud-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "fraud-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "analyst",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Analyst",
+      "email": "analyst@example.test",
+      "credentials": [{ "type": "password", "value": "analyst", "temporary": false }],
+      "realmRoles": ["FRAUD_ANALYST"]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Admin",
+      "email": "admin@example.test",
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["FRAUD_ADMIN", "FRAUD_ANALYST"]
+    }
+  ]
+}

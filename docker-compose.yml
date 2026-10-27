@@ -29,6 +29,24 @@ services:
       retries: 20
       start_period: 10s
 
+  # Local identity provider for exercising the prod profile (issuer-based JWT). Opt-in:
+  #   docker compose --profile idp up -d keycloak
+  # Local demo credentials only (realm users analyst/analyst and admin/admin). The issuer is pinned
+  # to http://keycloak:8080/realms/fraud so tokens fetched from the host (localhost:8180) carry the
+  # same `iss` the app validates inside the compose network.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    profiles: ["idp"]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://keycloak:8080
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    volumes: ["./config/keycloak:/opt/keycloak/data/import:ro"]
+    ports: ["127.0.0.1:8180:8080"]
+
   app:
     build: .
     depends_on:

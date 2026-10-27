@@ -226,6 +226,30 @@ Compose defaults are for local demo only (ports are bound to `127.0.0.1`). For a
 - Do not set `FRAUD_JWT_SECRET`. The HS256 decoder exists only when that secret is set, and the
   public dev secret is rejected at startup unless the `dev` profile is active.
 
+### Local identity provider (Keycloak)
+To run the `prod` profile (issuer-based JWT) locally, `docker-compose.yml` has an opt-in Keycloak service
+(compose profile `idp`) that imports the realm in `config/keycloak/fraud-realm.json`: realm `fraud`,
+public client `fraud-api` (password grant, audience `fraud-api`), realm roles `FRAUD_ANALYST` and
+`FRAUD_ADMIN`, users `analyst`/`analyst` and `admin`/`admin`. Local demo credentials only.
+```bash
+APP_PROFILES=prod \
+JWT_ISSUER_URI=http://keycloak:8080/realms/fraud \
+FRAUD_SECURITY_ROLES_CLAIM=realm_access.roles \
+SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=fraud-api \
+docker compose --profile idp up -d --build
+
+TOKEN=$(curl -s -X POST http://localhost:8180/realms/fraud/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=fraud-api -d username=analyst -d password=analyst \
+  | sed -E 's/.*"access_token":"([^"]+)".*/\1/')
+curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/decisions        # 200
+curl -H "Authorization: Bearer $TOKEN" localhost:8080/actuator/prometheus     # 403 (admin only)
+```
+The issuer is pinned (`KC_HOSTNAME=http://keycloak:8080`), so tokens fetched from the host carry the same
+`iss` the app validates inside the compose network. Keycloak starts in dev mode (`start-dev`, embedded
+database); do not use this setup beyond local testing. Checked manually: no token and a garbage token
+give 401, analyst gets 200 on the API and 403 on metrics, admin gets 200 on metrics, and
+`/v3/api-docs` returns 404.
+
 ### Security posture
 - JWT on every `/api/**` route, deny by default, roles `FRAUD_ANALYST` (read) and `FRAUD_ADMIN` (rules, DLQ replay, metrics). Admin rule changes and DLQ replay are rate limited.
 - Customer ids are masked in logs (`cust_12345` becomes `cust_***5`); a test checks the masked value in the logging context.
@@ -240,7 +264,7 @@ Compose defaults are for local demo only (ports are bound to `127.0.0.1`). For a
 - Evaluation, alert and dead-letter counters are incremented after the transaction commits (`AfterCommit`), so rolled-back work is not counted.
 - `metrics-summary` is a live query, not a roll-up. `decisions` and `transaction_history` are not partitioned and have no retention policy.
 - `fraud.rules.commands.v1` is not built (ADR-005). Categorisation is assumed upstream.
-- No custom tracing spans. The dev profile uses a shared local JWT secret; production uses the `prod` profile with an IdP issuer (see *Production configuration*). The `prod` path is covered by `ProdProfileIdentityProviderTest` against a local OIDC provider (discovery, JWKS, `iss`, `exp`, role mapping); it has not been run against a real IdP such as Keycloak, Entra or Auth0, whose role claim path must be set via `FRAUD_SECURITY_ROLES_CLAIM` when it is not a top-level `roles` (nested paths are unit-tested in `RolesClaimConverterTest`).
+- No custom tracing spans. The dev profile uses a shared local JWT secret; production uses the `prod` profile with an IdP issuer (see *Production configuration*). The `prod` path is covered by `ProdProfileIdentityProviderTest` against a local OIDC provider (discovery, JWKS, `iss`, `exp`, role mapping). It was also checked manually against a real Keycloak 26 container (see *Local identity provider (Keycloak)*: issuer and audience validation, nested `realm_access.roles` mapping, 401/403/200 matrix). Entra, Auth0 and Okta have not been tried; their role claim path must be set via `FRAUD_SECURITY_ROLES_CLAIM` when it is not a top-level `roles` (nested paths are unit-tested in `RolesClaimConverterTest`).
 
 ## Status
 Milestones M0–M5 complete (see `docs/PROGRESS.md`). Open items are listed under *Known limitations and future work*; business values marked `TODO(ADAPTER)` await confirmation rather than being invented.
