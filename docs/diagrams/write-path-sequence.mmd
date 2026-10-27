@@ -1,0 +1,33 @@
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '26px'}, 'sequence': {'actorFontSize': 26, 'messageFontSize': 24, 'noteFontSize': 24, 'wrap': true, 'width': 150, 'height': 60, 'messageMargin': 50, 'boxMargin': 12}}}%%
+sequenceDiagram
+    participant P as Producer<br/>(external)
+    participant K as Kafka
+    participant I as Ingestion<br/>(listener, handler)
+    participant E as Evaluation<br/>(processor)
+    participant DB as PostgreSQL
+    participant R as OutboxRelay
+    participant T as Output topics
+
+    P->>K: 1. produce categorized transaction event
+    K->>I: 2. consume (set MDC, manual ack later)
+    I->>I: 3. validate and retry (3 attempts, backoff)
+    alt invalid or retries exhausted
+        I->>DB: DeadLetterSink writes outbox row (fraud.dlq.v1)
+    else valid
+        I->>E: 4. process event
+        rect rgb(255, 243, 224)
+            Note over E,DB: one atomic DB transaction
+            E->>DB: 5. inbox claim (duplicate = no-op)
+            E->>E: 6. enrich, rule engine,<br/>risk score (cap 100)
+            E->>DB: 7. store decision, rule snapshots, outbox row
+            E->>DB: 8. store alert, audit, outbox row<br/>(only REVIEW/DECLINE)
+            E->>DB: 9. update transaction_history
+        end
+        DB-->>E: 10. commit (or rollback)
+    end
+    I->>K: 13. acknowledge (manual, after settled)
+    loop scheduled poller
+        R->>DB: 11. read unpublished rows<br/>(ordered by created_at, id)
+        R->>T: 12. publish evaluations, alerts, dlq topics
+        R->>DB: mark published after broker ack
+    end
