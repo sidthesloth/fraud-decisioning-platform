@@ -24,6 +24,45 @@ Bounded contexts: ingestion, ruledomain, evaluation, alert, decisions, api, plat
 Write path is fully asynchronous (Kafka → inbox → evaluation → outbox → publish);
 REST is used only for queries. See `docs/adr/`.
 
+### Component flow
+```mermaid
+flowchart TB
+    Clients["Clients: analysts, investigators, downstream systems"] -->|REST + JWT| API
+
+    subgraph App["Application services (bounded contexts)"]
+        API["api: query decisions, alerts, rules"]
+        ING["ingestion: consume Kafka, inbox, retry, DLQ"]
+        EVAL["evaluation: enrich, versioned rules, risk scoring"]
+        RD["ruledomain: rule versions, condition DSL"]
+        ALERT["alert: create alerts, audit entries"]
+        DEC["decisions: immutable decisions, rule snapshots"]
+    end
+
+    PLAT["platform: shared kernel (config, security, observability, outbox relay)"]
+
+    API --> DEC
+    API --> ALERT
+    API --> RD
+    ING --> EVAL
+    ING --> DEC
+    ING --> ALERT
+    EVAL --> RD
+    App -.-> PLAT
+
+    subgraph Infra["Infrastructure"]
+        KAFKA["Kafka / Redpanda: payments.transactions.categorized.v1, fraud.evaluations.v1, fraud.alerts.v1, fraud.dlq.v1"]
+        PG[("PostgreSQL: processed_events, decisions, alerts, transaction_history, outbox")]
+    end
+
+    KAFKA -->|consume| ING
+    DEC --> PG
+    ALERT --> PG
+    ING --> PG
+    PG -->|outbox relay publishes| KAFKA
+```
+Solid arrows are calls or data flow; the dotted arrow is the dependency on `platform`. Exact
+dependencies are enforced by the ArchUnit and Spring Modulith tests.
+
 Module mapping to the brief: ingestion-adapter=`ingestion`, rule-domain=`ruledomain`, evaluation-domain=`evaluation`, alert-domain=`alert`, decision-store=`decisions`, retrieval-api=`api` (see ADR-005).
 
 ## How the system flows (write path)
@@ -61,7 +100,7 @@ OutboxRelay (scheduled poller, ordered by created_at, id) --> Kafka
    header (`traceId`, `spanId`) into the logging context (MDC) so every log line for the message is
    correlated, and acknowledges manually only after processing has settled. A crash or rebalance
    causes redelivery, never loss.
-2. **Retry and dead letter.** `ResilientEventHandler` retries up to 3 times with exponential
+2. **Retry and dead letter.** `ResilientEventHandler` makes up to 3 attempts with exponential
    backoff. Unparseable or invalid events go straight to `DeadLetterSink`, as do events that exhaust
    retries. The dead letter is an outbox row carrying the original message, the error and the
    attempt count. If that write fails, the message is not acked and Kafka redelivers it.
@@ -77,6 +116,42 @@ OutboxRelay (scheduled poller, ordered by created_at, id) --> Kafka
    dual write). `OutboxRelay` marks a row published only after the broker acknowledges and stops at
    the first failure to keep order. Delivery is at-least-once; idempotent consumers make the effect
    exactly-once.
+
+#### Sequence diagram
+```mermaid
+sequenceDiagram
+    participant P as Producer (external)
+    participant K as Kafka
+    participant I as Ingestion (listener, handler)
+    participant E as Evaluation (processor)
+    participant DB as PostgreSQL
+    participant R as OutboxRelay
+    participant T as Output topics
+
+    P->>K: 1. produce categorized transaction event
+    K->>I: 2. consume (set MDC, manual ack later)
+    I->>I: 3. validate and retry (3 attempts, backoff)
+    alt invalid or retries exhausted
+        I->>DB: DeadLetterSink writes outbox row (fraud.dlq.v1)
+    else valid
+        I->>E: 4. process event
+        rect rgb(255, 243, 224)
+            Note over E,DB: one atomic DB transaction
+            E->>DB: 5. inbox claim (duplicate = no-op)
+            E->>E: 6. enrich (circuit breaker + bulkhead), rule engine, risk score (cap 100)
+            E->>DB: 7. store decision, rule snapshots, outbox row
+            E->>DB: 8. store alert, audit, outbox row (only REVIEW/DECLINE)
+            E->>DB: 9. update transaction_history
+        end
+        DB-->>E: 10. commit (or rollback)
+    end
+    I->>K: 13. acknowledge (manual, after settled)
+    loop scheduled poller
+        R->>DB: 11. read unpublished rows (ordered by created_at, id)
+        R->>T: 12. publish fraud.evaluations.v1 / fraud.alerts.v1 / fraud.dlq.v1
+        R->>DB: mark published after broker ack
+    end
+```
 
 The read path is separate: the REST API only queries stored decisions, alerts and rules.
 Failure behaviour for each stage is exercised in `docs/RUNBOOK.md`.
