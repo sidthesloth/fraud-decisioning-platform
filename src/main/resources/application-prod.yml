@@ -1,0 +1,16 @@
+# Production profile. Everything sensitive comes from the environment; there are no defaults.
+# DB_URL / DB_USERNAME / DB_PASSWORD / KAFKA_BOOTSTRAP_SERVERS come from application.yml.
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Required: startup fails if JWT_ISSUER_URI is unset. Tokens must carry a `roles` claim
+          # (FRAUD_ANALYST / FRAUD_ADMIN). Do not set FRAUD_JWT_SECRET in production.
+          issuer-uri: ${JWT_ISSUER_URI}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

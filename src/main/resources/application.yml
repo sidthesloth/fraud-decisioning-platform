@@ -34,8 +34,11 @@ spring:
 
 fraud:
   security:
-    # HS256 shared secret (>= 32 bytes). No default: the app refuses to start without it.
-    jwt-secret: ${FRAUD_JWT_SECRET}
+    # Optional HS256 shared secret (>= 32 bytes) for dev/test. When empty, the issuer-based decoder is
+    # used and spring.security.oauth2.resourceserver.jwt.issuer-uri (or jwk-set-uri) must be set;
+    # with neither, startup fails because no JwtDecoder exists. The public dev secret is rejected
+    # outside the dev profile.
+    jwt-secret: ${FRAUD_JWT_SECRET:}
 
 management:
   endpoints:

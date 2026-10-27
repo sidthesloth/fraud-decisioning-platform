@@ -207,9 +207,20 @@ there are no custom spans for enrichment, engine or database steps.
 `TRACING_SAMPLING_PROBABILITY=1.0`, `OTEL_EXPORT_ENABLED=true` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`.
 
 ### Production configuration
-Compose defaults are for local demo only. For a real deployment set `POSTGRES_USER` / `POSTGRES_PASSWORD`
-(from a secrets manager), run without the `dev` profile (`APP_PROFILES=prod`) and point
-`spring.security.oauth2.resourceserver.jwt.issuer-uri` at your IdP instead of the shared HS256 secret.
+Compose defaults are for local demo only (ports are bound to `127.0.0.1`). For a real deployment:
+- Set `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` and `KAFKA_BOOTSTRAP_SERVERS` from a secrets manager.
+- Run with the `prod` profile (`APP_PROFILES=prod`) and set `JWT_ISSUER_URI` to your IdP. The `prod`
+  profile uses Spring Boot's issuer-based JWT decoder, requires the issuer (startup fails without
+  it) and disables Swagger UI and `/v3/api-docs`. Tokens need a `roles` claim (`FRAUD_ANALYST`,
+  `FRAUD_ADMIN`).
+- Do not set `FRAUD_JWT_SECRET`. The HS256 decoder exists only when that secret is set, and the
+  public dev secret is rejected at startup unless the `dev` profile is active.
+
+### Security posture
+- JWT on every `/api/**` route, deny by default, roles `FRAUD_ANALYST` (read) and `FRAUD_ADMIN` (rules, DLQ replay, metrics). Admin rule changes and DLQ replay are rate limited.
+- Customer ids are masked in logs (`cust_12345` becomes `cust_***5`).
+- No default secrets outside `dev`; OWASP dependency-check fails the build at CVSS 7 or higher.
+- Not covered here, left to the platform: TLS to Postgres and Kafka, broker authentication (SASL), `iss`/`aud` checks beyond what the IdP issuer provides, and authentication failure auditing.
 
 ## Known limitations and future work
 - Business values are placeholders (`TODO(ADAPTER)`): score thresholds (40/80), alert severity bands, home country for cross-border. `customer.riskTier` and `geo.velocity` need a data source and are currently unavailable (null).
@@ -218,7 +229,7 @@ Compose defaults are for local demo only. For a real deployment set `POSTGRES_US
 - Evaluation, alert and dead-letter counters are incremented after the transaction commits (`AfterCommit`), so rolled-back work is not counted.
 - `metrics-summary` is a live query, not a roll-up. `decisions` and `transaction_history` are not partitioned and have no retention policy.
 - `fraud.rules.commands.v1` is not built (ADR-005). Categorisation is assumed upstream.
-- No custom tracing spans. The dev profile uses a shared local JWT secret; production needs an IdP.
+- No custom tracing spans. The dev profile uses a shared local JWT secret; production uses the `prod` profile with an IdP issuer (see *Production configuration*). That path is configuration-only and is not covered by an automated test against a real IdP.
 
 ## Status
 Milestones M0–M5 complete (see `docs/PROGRESS.md`). Open items are listed under *Known limitations and future work*; business values marked `TODO(ADAPTER)` await confirmation rather than being invented.

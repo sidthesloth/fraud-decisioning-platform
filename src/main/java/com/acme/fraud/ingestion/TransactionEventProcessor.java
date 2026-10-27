@@ -5,6 +5,7 @@ import com.acme.fraud.decisions.DecisionStore;
 import com.acme.fraud.decisions.DecisionStore.SaveResult;
 import com.acme.fraud.evaluation.Decision;
 import com.acme.fraud.evaluation.FraudEvaluator;
+import com.acme.fraud.platform.PiiMasking;
 import org.slf4j.MDC;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -53,7 +54,7 @@ public class TransactionEventProcessor {
     ParsedEvent event = parser.parse(raw);
     long start = System.nanoTime();
     MDC.put("transactionId", event.facts().transactionId());
-    MDC.put("customerId", event.facts().customerId());
+    MDC.put("customerId", PiiMasking.maskId(event.facts().customerId()));
     try {
       return processParsed(event, start);
     } finally {
